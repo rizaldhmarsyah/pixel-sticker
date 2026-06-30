@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
+import { saveNota } from "./actions"; // REVISI: Import Server Action baru hasil ubahan
 
-export default function KuitansiPage() {
+export default function NotaPage() {
   const supabase = createClient();
   const [mounted, setMounted] = useState(false);
   const [receipts, setReceipts] = useState<any[]>([]);
@@ -38,7 +39,7 @@ export default function KuitansiPage() {
 
   // Form State Bersih
   const [data, setData] = useState({
-    noKuitansi: "",
+    noNota: "", // REVISI: Mengubah properti noKuitansi -> noNota
     nama: "",
     materialId: "",
     metersUsed: 0,
@@ -60,7 +61,7 @@ export default function KuitansiPage() {
     }
   }, [notification]);
 
-  // Tarik riwayat data kuitansi
+  // Tarik riwayat data nota (tetap dari tabel receipts di Supabase)
   const fetchReceipts = async () => {
     const { data: list } = await supabase
       .from("receipts")
@@ -78,40 +79,40 @@ export default function KuitansiPage() {
     if (list) setMaterials(list);
   };
 
-  // FUNGSI TOMBOL GENERATOR NOMOR KUITANSI OTOMATIS
+  // FUNGSI TOMBOL GENERATOR NOMOR NOTA OTOMATIS
   const handleGenerateInvoiceNumber = () => {
-    const formatInvoice = `INV-${new Date().getFullYear().toString().slice(-2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${Math.floor(1000 + Math.random() * 9000)}`;
-    setData((prev) => ({ ...prev, noKuitansi: formatInvoice }));
+    const formatInvoice = `NOT-${new Date().getFullYear().toString().slice(-2)}${String(new Date().getMonth() + 1).padStart(2, "0")}-${Math.floor(1000 + Math.random() * 9000)}`;
+    setData((prev) => ({ ...prev, noNota: formatInvoice }));
   };
 
   const handleNew = () => {
     setData({
-      noKuitansi: "",
+      noNota: "",
       nama: "",
       materialId: "",
       metersUsed: 0,
       total: 0,
       keterangan: "",
-      owner: "Rizal Pixel",
+      owner: "Pixel Sticker",
     });
   };
 
   const handleEdit = (item: any) => {
     setData({
-      noKuitansi: item.receipt_no || "",
+      noNota: item.receipt_no || "",
       nama: item.customer_name || "",
       materialId: "",
       metersUsed: 0,
       total: item.total_amount || 0,
       keterangan: item.description || "",
-      owner: "Rizal Pixel",
+      owner: "Pixel Sticker",
     });
   };
 
   // LOGIKA SIMPAN & POTONG STOK BAHAN DI SUPABASE
   const handleSave = async () => {
     if (
-      !data.noKuitansi ||
+      !data.noNota ||
       !data.nama ||
       !data.materialId ||
       data.metersUsed <= 0 ||
@@ -149,30 +150,20 @@ export default function KuitansiPage() {
       // 3. BINDING DESKRIPSI: Masukkan info pemakaian bahan & catatan manual ke kolom description asli database
       const rincianDeskripsiLunas = `Bahan: ${selectedMaterial.name} (${data.metersUsed}m) ${data.keterangan ? `| Catatan: ${data.keterangan}` : ""}`;
 
-      // 4. INSERT DATA KE SUPABASE
-      const { error: insertReceiptError } = await supabase
-        .from("receipts")
-        .insert([
-          {
-            receipt_no: data.noKuitansi,
-            customer_name: data.nama,
-            total_amount: data.total,
-            description: rincianDeskripsiLunas,
-          },
-        ]);
+      // 4. CALL SERVER ACTION UNTUK UPSERT TRANSAKSI
+      // Mengonversi format data state lokal agar sesuai dengan kebutuhan fungsi saveNota di actions.ts
+      const payloadAction = {
+        noKuitansi: data.noNota,
+        nama: data.nama,
+        total: data.total,
+        keterangan: rincianDeskripsiLunas,
+      };
 
-      if (insertReceiptError) {
-        // Rollback stok jika gagal
-        await supabase
-          .from("materials")
-          .update({ stock_meters: selectedMaterial.stock_meters })
-          .eq("id", data.materialId);
-        throw insertReceiptError;
-      }
+      await saveNota(payloadAction);
 
       setNotification({
         type: "success",
-        message: `Kuitansi ${data.noKuitansi} sukses disimpan! Stok bahan berkurang ${data.metersUsed} meter.`,
+        message: `Nota ${data.noNota} sukses disimpan! Stok bahan berkurang ${data.metersUsed} meter.`,
       });
 
       handleNew();
@@ -249,11 +240,10 @@ export default function KuitansiPage() {
               <ChevronLeft size={14} /> Dashboard
             </Link>
             <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-neutral-900">
-              Pembuatan Kuitansi Kasir
+              Pembuatan Nota Kasir
             </h1>
           </div>
 
-          {/* FIX REVISI: Hanya menyisakan tombol Reset Form dan Simpan & Potong Stok. Tombol Cetak atas kanan resmi dihapus */}
           <div className="flex gap-2 w-full md:w-auto text-xs font-bold uppercase tracking-wider">
             <button
               onClick={handleNew}
@@ -277,20 +267,20 @@ export default function KuitansiPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* BARIS KIRI: INPUT FORM VALIDASI KUITANSI */}
+          {/* BARIS KIRI: INPUT FORM VALIDASI NOTA */}
           <div className="lg:col-span-4 no-print text-neutral-900 text-left">
             <div className="bg-white border border-neutral-200/60 p-6 md:p-8 rounded-[2rem] shadow-sm space-y-4">
-              {/* NOMOR INVOICE */}
+              {/* NOMOR NOTA */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-0.5">
-                  Nomor Nota Kuitansi
+                  Nomor Nota Toko
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     readOnly
                     placeholder="Klik Generate ->"
-                    value={data.noKuitansi}
+                    value={data.noNota}
                     className="flex-1 bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-mono font-bold text-blue-600 outline-none"
                   />
                   <button
@@ -406,7 +396,7 @@ export default function KuitansiPage() {
             </div>
           </div>
 
-          {/* BARIS TENGAH: LIVE PREVIEW KUITANSI */}
+          {/* BARIS TENGAH: LIVE PREVIEW NOTA */}
           <div className="lg:col-span-5">
             <div
               id="receipt"
@@ -423,10 +413,10 @@ export default function KuitansiPage() {
                 </div>
                 <div className="text-right">
                   <h3 className="text-base font-black uppercase tracking-widest">
-                    Kuitansi Resmi
+                    Nota Resmi
                   </h3>
                   <p className="text-[11px] text-blue-600 font-mono font-bold tracking-tight">
-                    {data.noKuitansi || "INV-XXXXXX"}
+                    {data.noNota || "NOT-XXXXXX"}
                   </p>
                 </div>
               </div>
@@ -502,13 +492,13 @@ export default function KuitansiPage() {
             </div>
           </div>
 
-          {/* BARIS KANAN: DOKUMENTASI ARSIP RIWAYAT KUITANSI */}
+          {/* BARIS KANAN: DOKUMENTASI ARSIP RIWAYAT NOTA */}
           <div className="lg:col-span-3 no-print text-left">
             <div className="bg-white border border-neutral-200/60 rounded-[2rem] overflow-hidden shadow-sm">
               <div className="p-4 border-b border-neutral-100 bg-neutral-50">
                 <h3 className="text-xs font-black uppercase tracking-wider text-neutral-800 flex items-center gap-1.5">
                   <FileText size={14} className="text-blue-600" /> Dokumentasi
-                  Kuitansi ({filtered.length})
+                  Nota ({filtered.length})
                 </h3>
 
                 <div className="relative mt-3">
@@ -535,7 +525,7 @@ export default function KuitansiPage() {
                     <div
                       key={r.id}
                       onClick={() => handleEdit(r)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${data.noKuitansi === r.receipt_no ? "bg-blue-500/5 border-blue-500" : "bg-white border-neutral-100 hover:border-neutral-200 shadow-sm"}`}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${data.noNota === r.receipt_no ? "bg-blue-500/5 border-blue-500" : "bg-white border-neutral-100 hover:border-neutral-200 shadow-sm"}`}
                     >
                       <div className="flex justify-between items-start gap-2">
                         <div className="min-w-0 flex-1">

@@ -3,12 +3,13 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
-export async function saveReceipt(data: any) {
+// REVISI: Mengubah nama fungsi saveReceipt menjadi saveNota
+export async function saveNota(data: any) {
   const supabase = await createClient();
 
-  // Validasi sederhana agar tidak simpan data kosong
+  // REVISI: Validasi teks pesan menyebut kata "Nota"
   if (!data.noKuitansi || data.noKuitansi.includes("Klik")) {
-    throw new Error("Nomor Kuitansi harus dibuat dulu (Klik tombol Baru)");
+    throw new Error("Nomor Nota harus dibuat dulu (Klik tombol Baru)");
   }
 
   const payload = {
@@ -19,7 +20,7 @@ export async function saveReceipt(data: any) {
   };
 
   const { error } = await supabase
-    .from("receipts")
+    .from("receipts") // Tetap menembak tabel "receipts" di Supabase agar database tidak error
     .upsert(payload, { onConflict: "receipt_no" });
 
   if (error) {
@@ -30,7 +31,8 @@ export async function saveReceipt(data: any) {
   revalidatePath("/admin/dashboard/kuitansi");
 }
 
-export async function deleteReceipt(id: string) {
+// REVISI: Mengubah nama fungsi deleteReceipt menjadi deleteNota
+export async function deleteNota(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("receipts").delete().eq("id", id);
   if (error) throw new Error(error.message);

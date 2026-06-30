@@ -11,10 +11,11 @@ import {
   X,
   FolderHeart,
   CalendarCheck,
-  BarChart3, // TAMBAHKAN INI: Ikon untuk menu laporan pendapatan owner
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // TAMBAHKAN INI: Ambil useRouter untuk redirect
+import { createClient } from "@/utils/supabase/client"; // TAMBAHKAN INI: Ambil Supabase Client
 
 const navLinks = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -30,19 +31,47 @@ const navLinks = [
     href: "/admin/dashboard/bookings",
     icon: CalendarCheck,
   },
-  { name: "Buat Kuitansi", href: "/admin/dashboard/kuitansi", icon: Printer },
+  { name: "Buat Nota", href: "/admin/dashboard/nota", icon: Printer },
   {
     name: "Laporan Pendapatan",
     href: "/admin/dashboard/laporan",
-    icon: BarChart3, // TAMBAHKAN INI: Menghubungkan ke halaman laporan terfilter
+    icon: BarChart3,
   },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter(); // Inisialisasi router Next.js
+  const supabase = createClient(); // Inisialisasi Supabase client
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // State loading biar keren pas logout
 
   const toggleSidebar = () => setIsOpen(!isOpen);
+
+  // --- HANDLER LOGOUT RESMI SUPABASE ---
+  const handleLogout = async () => {
+    const konfirmasi = confirm(
+      "Apakah Anda yakin ingin keluar dari sistem admin?",
+    );
+    if (!konfirmasi) return;
+
+    setIsLoggingOut(true);
+    try {
+      // 1. Perintahkan Supabase untuk menghapus session auth aktif
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      alert("Anda berhasil keluar dari sistem.");
+
+      // 2. Tendang admin kembali ke halaman login utama
+      router.push("/login");
+      router.refresh(); // Segarkan route untuk memastikan cookies session bersih
+    } catch (err: any) {
+      alert("Gagal keluar dari sistem: " + err.message);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <>
@@ -121,12 +150,17 @@ export default function Sidebar() {
 
           {/* Footer / Logout */}
           <div className="pt-8 border-t border-slate-800">
-            <button className="flex items-center gap-4 px-5 py-4 w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-2xl transition-all group text-xs font-bold uppercase tracking-wide">
+            {/* PERBAIKAN: Menambahkan onClick handler ke fungsi handleLogout */}
+            <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="flex items-center gap-4 px-5 py-4 w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-2xl transition-all group text-xs font-bold uppercase tracking-wide disabled:opacity-50"
+            >
               <LogOut
                 size={20}
                 className="text-slate-400 group-hover:text-red-400 transition-colors"
               />
-              <span>Keluar</span>
+              <span>{isLoggingOut ? "Memproses..." : "Keluar"}</span>
             </button>
           </div>
         </div>
