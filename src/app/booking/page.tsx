@@ -1,3 +1,4 @@
+// src/app/booking/page.tsx
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
@@ -37,8 +38,8 @@ export default function BookingPage() {
   const [form, setForm] = useState({
     fullName: "",
     whatsapp: "",
-    vehicleInput: "", // Menyimpan string teks nama mobil (car_model)
-    idCars: null as string | null, // Menyimpan UUID FK dari tabel cars
+    vehicleInput: "",
+    idCars: null as number | string | null,
     note: "",
     selectedDateId: "",
   });
@@ -61,45 +62,55 @@ export default function BookingPage() {
 
   useEffect(() => {
     const fetchDatabaseInfo = async (currentUser: any) => {
-      // 1. Ambil Riwayat Booking
-      const { data: bookings } = await supabase
-        .from("bookings")
-        .select("id_bookings")
-        .eq("id_profiles", currentUser.id)
-        .limit(1);
+      try {
+        // 1. Ambil Riwayat Booking
+        const { data: bookings } = await supabase
+          .from("bookings")
+          .select("id_bookings")
+          .eq("id_profiles", currentUser.id)
+          .limit(1);
 
-      setHasBookingHistory(bookings && bookings.length > 0);
+        setHasBookingHistory(!!(bookings && bookings.length > 0));
 
-      // 2. AMBIL DATA DARI TABEL CARS UNTUK DROPDOWN FRONTEND
-      const { data: carsData } = await supabase
-        .from("cars")
-        .select("id_cars, brand, model")
-        .order("brand", { ascending: true });
-      if (carsData) setCarsList(carsData);
+        // 2. AMBIL DATA DARI TABEL CARS UNTUK DROPDOWN
+        const { data: carsData } = await supabase
+          .from("cars")
+          .select("id_cars, brand, model")
+          .order("brand", { ascending: true });
 
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        if (carsData) setCarsList(carsData);
 
-      const { data: sampleConfig } = await supabase
-        .from("available_dates")
-        .select("end_date")
-        .gte("available_dates", todayStr)
-        .order("available_dates", { ascending: true })
-        .limit(1);
+        // FORMAT TANGGAL YANG AMAN DARI ERROR PARSING DATE
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, "0");
+        const day = String(today.getDate()).padStart(2, "0");
+        const todayStr = `${year}-${month}-${day}`;
 
-      const maxAllowedDate = sampleConfig?.[0]?.end_date || todayStr;
+        // AMBIL KONFIGURASI TANGGAL TERSEDIA
+        const { data: sampleConfig } = await supabase
+          .from("available_dates")
+          .select("end_date")
+          .gte("available_dates", todayStr)
+          .order("available_dates", { ascending: true })
+          .limit(1);
 
-      const { data: dates } = await supabase
-        .from("available_dates")
-        .select("*")
-        .eq("is_available", true)
-        .gte("available_dates", todayStr)
-        .lte("available_dates", maxAllowedDate)
-        .order("available_dates", { ascending: true });
+        const maxAllowedDate = sampleConfig?.[0]?.end_date || todayStr;
 
-      if (dates) setAvailableDates(dates);
+        const { data: dates } = await supabase
+          .from("available_dates")
+          .select("*")
+          .eq("is_available", true)
+          .gte("available_dates", todayStr)
+          .lte("available_dates", maxAllowedDate)
+          .order("available_dates", { ascending: true });
 
-      setAuthLoading(false);
+        if (dates) setAvailableDates(dates);
+      } catch (err) {
+        console.error("Error fetching database info:", err);
+      } finally {
+        setAuthLoading(false);
+      }
     };
 
     const initData = async () => {
@@ -130,7 +141,7 @@ export default function BookingPage() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  // LOGIKA FILTER PENCARIAN DROPDOWN MOBIL HIBRIDA
+  // LOGIKA FILTER PENCARIAN DROPDOWN MOBIL
   const filteredCars = useMemo(() => {
     if (!carSearch.trim()) return carsList;
     return carsList.filter((c) => {
@@ -155,12 +166,15 @@ export default function BookingPage() {
         ? targetDateObj.available_dates
         : "";
 
-      // MENYUNTIKKAN DATA ID_CARS (FK) DAN CAR_MODEL PADA TRANSAKSI BOOKINGS
+      // MENGATASI ERROR INVALID INPUT SYNTAX INTEGER: ""
+      // Jika form.idCars bernilai Falsy/Kosong (""), paksa menjadi NULL murni
+      const safeIdCars = form.idCars ? form.idCars : null;
+
       const { error } = await supabase.from("bookings").insert([
         {
           id_profiles: user.id,
           id_available_dates: parseInt(form.selectedDateId),
-          id_cars: form.idCars, // UUID dari data master atau NULL jika ketik manual
+          id_cars: safeIdCars, // Menggunakan variabel NULL murni
           full_name: form.fullName,
           whatsapp_number: form.whatsapp,
           car_model: form.vehicleInput,
@@ -187,7 +201,10 @@ export default function BookingPage() {
       });
       setCarSearch("");
 
-      const todayStr = new Date().toISOString().split("T")[0];
+      // REFRESH SLOT TANGGAL
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
       const { data: sampleConfig } = await supabase
         .from("available_dates")
         .select("end_date")
@@ -323,7 +340,7 @@ export default function BookingPage() {
                 />
               </div>
 
-              {/* REVISI PREMIUM: SEARCHABLE HYBRID DROPDOWN AUTOMATIC INPUT (RAMAH BAPAK-BAPAK) */}
+              {/* SEARCHABLE HYBRID DROPDOWN AUTOMATIC INPUT */}
               <div className="space-y-2 relative" ref={carDropdownRef}>
                 <label className="text-[11px] font-extrabold uppercase tracking-wider text-neutral-600 flex items-center gap-1.5">
                   <Car size={13} className="text-neutral-400" /> Jenis Kendaraan
@@ -350,7 +367,6 @@ export default function BookingPage() {
 
                 {isCarDropdownOpen && (
                   <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-60">
-                    {/* INPUT PENCARIAN SEKALIGUS AUTO-INPUT MANUAL */}
                     <div className="p-2 border-b border-neutral-100 bg-neutral-50 flex items-center gap-2">
                       <Search size={14} className="text-neutral-400 shrink-0" />
                       <input
@@ -360,7 +376,6 @@ export default function BookingPage() {
                         onChange={(e) => {
                           const val = e.target.value;
                           setCarSearch(val);
-                          // Otomatis daftarkan ketikan bapak-bapak sebagai input manual (idCars: null)
                           setForm({ ...form, vehicleInput: val, idCars: null });
                         }}
                         className="w-full bg-transparent text-xs text-neutral-900 outline-none font-bold"
@@ -374,7 +389,6 @@ export default function BookingPage() {
                           <div
                             key={c.id_cars}
                             onClick={() => {
-                              // Jika mereka mengeklik opsi resmi, timpa dengan data UUID dari database
                               setForm({
                                 ...form,
                                 vehicleInput: fullName,
@@ -390,7 +404,6 @@ export default function BookingPage() {
                         );
                       })}
 
-                      {/* Notifikasi info otomatis untuk membantu bapak-bapak tahu ketikannya sudah tersimpan */}
                       {carSearch.trim().length > 0 &&
                         filteredCars.length === 0 && (
                           <div className="px-4 py-3 text-neutral-400 italic bg-amber-50/40 text-[11px] text-center">
@@ -470,7 +483,7 @@ export default function BookingPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || availableDates.length === 0}
-                className="w-full bg-neutral-900 hover:bg-black disabled:opacity-40 text-white font-bold py-4 rounded-xl text-xs uppercase tracking-widest transition-all active:scale-[0.99] flex items-center justify-center"
+                className="w-full bg-neutral-900 hover:bg-black disabled:opacity-40 text-white font-bold py-4 rounded-xl text-xs uppercase tracking-widest transition-all active:scale-[0.99] flex items-center justify-center cursor-pointer"
               >
                 {isSubmitting ? (
                   <Loader2 size={16} className="animate-spin" />
