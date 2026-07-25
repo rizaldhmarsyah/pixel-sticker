@@ -1,3 +1,5 @@
+//src-app-admin-dashboard-cars-page-tsx
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -256,7 +258,7 @@ export default function CarsPage() {
                     <tbody className="divide-y divide-neutral-100 bg-white text-neutral-900">
                       {cars.map((car) => (
                         <CarRow
-                          key={car.id}
+                          key={car.id_cars} // REVISI: id diganti menjadi id_cars
                           car={car}
                           onRefresh={refreshData}
                         />

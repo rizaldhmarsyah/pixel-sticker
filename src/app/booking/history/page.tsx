@@ -32,7 +32,8 @@ export default function BookingHistoryPage() {
         const { data: bookings } = await supabase
           .from("bookings")
           .select("*")
-          .eq("user_id", session.user.id)
+          // REVISI ARCHITECTURE: Menggunakan id_profile hasil migrasi Foreign Key fisik
+          .eq("id_profiles", session.user.id)
           .order("created_at", { ascending: false });
 
         if (bookings) setMyBookings(bookings);
@@ -88,7 +89,7 @@ export default function BookingHistoryPage() {
           </div>
         </div>
 
-        {/* LIST ANTRIAN DENGAN DESAIN BARU (KOLOM PUTIH BERSIH) */}
+        {/* LIST ANTRIAN */}
         <div className="space-y-5">
           {myBookings.length === 0 ? (
             <div className="text-center py-20 border border-dashed border-white/10 rounded-[2rem] bg-neutral-900/10">
@@ -99,9 +100,9 @@ export default function BookingHistoryPage() {
             </div>
           ) : (
             myBookings.map((b) => (
-              /* REVISI UTAMA: BG JADI bg-white, TEXT JADI text-neutral-900, KOTAK EMAS/BIRU DISESUAIKAN */
               <div
-                key={b.id}
+                // REVISI ARCHITECTURE: Memakai id_booking hasil pembaruan Primary Key fisik
+                key={b.id_bookings}
                 className="p-6 bg-white text-neutral-900 rounded-[2rem] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 shadow-xl border border-neutral-200 transition-all group animate-fadeIn"
               >
                 <div className="space-y-3 flex-1">
@@ -120,7 +121,8 @@ export default function BookingHistoryPage() {
                       {b.status}
                     </span>
                     <span className="text-[10px] text-neutral-400 font-mono tracking-tighter bg-neutral-100 px-1.5 py-0.5 rounded">
-                      ID: {b.id.slice(0, 8).toUpperCase()}
+                      {/* REVISI ARCHITECTURE: Mengambil potongan kode dari id_booking */}
+                      ID: {b.id_bookings.slice(0, 8).toUpperCase()}
                     </span>
                   </div>
 
@@ -148,7 +150,7 @@ export default function BookingHistoryPage() {
                   </div>
                 </div>
 
-                {/* AREA SEBELAH KANAN (TOMBOL DOWNLOAD / STATUS PROSES / BATAL) */}
+                {/* AREA SEBELAH KANAN */}
                 <div className="w-full sm:w-auto flex-shrink-0">
                   {b.status === "selesai" && b.receipt_pdf_url ? (
                     <a
@@ -158,7 +160,7 @@ export default function BookingHistoryPage() {
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-neutral-900 hover:bg-black text-white px-6 py-3.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-[0.98]"
                     >
                       <Download size={14} />
-                      <span>Unduh Kuitansi</span>
+                      <span>Unduh Nota</span>
                     </a>
                   ) : (
                     <div
@@ -196,8 +198,8 @@ export default function BookingHistoryPage() {
         {/* INFO FOOTER */}
         <div className="p-6 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
           <p className="text-[11px] text-blue-400/80 leading-relaxed text-center italic">
-            "Kuitansi resmi hanya dapat diunduh setelah status pengerjaan
-            dinyatakan 'Selesai' oleh admin workshop Pixel Sticker."
+            "Nota resmi hanya dapat diunduh setelah status pengerjaan dinyatakan
+            'Selesai' oleh admin workshop Pixel Sticker."
           </p>
         </div>
       </div>

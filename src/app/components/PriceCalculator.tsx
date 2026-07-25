@@ -3,13 +3,13 @@
 import { useState, useMemo } from "react";
 
 interface Material {
-  id: string;
+  id_materials: string; // REVISI ARCHITECTURE: id diganti menjadi id_material
   name: string;
   price_per_meter: number;
 }
 
 interface Car {
-  id: string;
+  id_cars: string; // REVISI ARCHITECTURE: id diganti menjadi id_cars
   brand: string;
   model: string;
   meters_needed: number;
@@ -30,8 +30,11 @@ export default function PriceCalculator({
     return cars.filter((car) => car.brand === selectedBrand);
   }, [selectedBrand, cars]);
 
-  const selectedCar = cars.find((c) => c.id === selectedCarId);
-  const selectedMaterial = materials.find((m) => m.id === selectedMaterialId);
+  // REVISI ARCHITECTURE: find dialihkan mencocokkan id_cars dan id_material baru
+  const selectedCar = cars.find((c) => c.id_cars === selectedCarId);
+  const selectedMaterial = materials.find(
+    (m) => m.id_materials === selectedMaterialId,
+  );
 
   const totalPrice = useMemo(() => {
     if (selectedCar && selectedMaterial) {
@@ -85,7 +88,8 @@ export default function PriceCalculator({
           >
             <option value="">Pilih Tipe</option>
             {availableModels.map((car) => (
-              <option key={car.id} value={car.id}>
+              // REVISI ARCHITECTURE: key dan value diganti menggunakan car.id_cars
+              <option key={car.id_cars} value={car.id_cars}>
                 {car.model} ({car.meters_needed}m)
               </option>
             ))}
@@ -100,10 +104,11 @@ export default function PriceCalculator({
           <div className="grid grid-cols-1 gap-3">
             {materials.map((mat) => (
               <button
-                key={mat.id}
-                onClick={() => setSelectedMaterialId(mat.id)}
+                // REVISI ARCHITECTURE: key dan state handler diubah total menggunakan mat.id_material
+                key={mat.id_materials}
+                onClick={() => setSelectedMaterialId(mat.id_materials)}
                 className={`flex justify-between items-center p-5 rounded-2xl border transition-all ${
-                  selectedMaterialId === mat.id
+                  selectedMaterialId === mat.id_materials
                     ? "border-blue-500 bg-blue-500/10"
                     : "border-neutral-800 bg-neutral-800/40 hover:border-neutral-600"
                 }`}

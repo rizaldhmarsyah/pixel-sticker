@@ -10,9 +10,8 @@ import {
   Clock,
   MapPin,
   Phone,
-  Mail,
   ChevronRight,
-  Car,
+  ExternalLink,
   Users,
 } from "lucide-react";
 
@@ -23,23 +22,43 @@ export default function TentangKamiPage() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  // URL Iframe asli dari user yang sudah di-ZOOM DEKAT (!4f18)
+  const gmapsEmbedUrl =
+    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.83926422356!2d106.84244607428016!3d-6.1522761938347745!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f5b99555553f%3A0x7d2c267435b34d04!2sPixel%20sticker!5e0!3m2!1sid!2sid!4v1784987675579!5m2!1sid!2sid8";
+
+  // URL Link Buka Rute
+  const gmapsDirectUrl =
+    "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.83926422356!2d106.84244607428016!3d-6.1522761938347745!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f5b99555553f%3A0x7d2c267435b34d04!2sPixel%20sticker!5e0!3m2!1sid!2sid!4v1784987675579!5m2!1sid!2sid9";
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] text-neutral-950 font-sans antialiased text-left selection:bg-blue-500 selection:text-white">
-      {/* HERO SECTION MINI */}
-      <div className="bg-white border-b border-neutral-200/60 py-16 md:py-24 px-6 md:p-12 text-center relative overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* HERO SECTION MINI - BANNER BACKGROUND GAMBAR DENGAN OVERLAY GELAP */}
+      <div className="relative bg-neutral-950 border-b border-neutral-800 pt-28 md:pt-36 pb-16 md:pb-24 px-6 md:p-12 text-center overflow-hidden text-white">
+        {/* 1. GAMBAR BACKGROUND UNTUK UNIFIED BRANDING */}
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-40 scale-105 transition-transform duration-1000"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1617814076367-b759c7d7e738?q=80&w=2000&auto=format&fit=crop')", // Ganti URL ini dengan path gambar beranda lu (misal: '/hero-bg.jpg')
+          }}
+        />
 
+        {/* 2. OVERLAY GELAP & GRADIENT DENGAN OFFSET NAVBAR */}
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/90 via-neutral-950/80 to-neutral-950/95" />
+
+        {/* 3. EFEK GLOW ORNAMENT UNTUK TAMPILAN MODERN */}
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
+
+        {/* 4. KONTEN UTAMA */}
         <div className="max-w-3xl mx-auto space-y-4 relative z-10">
-          <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3.5 py-1.5 rounded-full border border-blue-100">
+          <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3.5 py-1.5 rounded-full border border-blue-500/20 backdrop-blur-md">
             Premium Car Wrap Studio
           </span>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight text-neutral-900 uppercase">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white uppercase drop-shadow-sm">
             Pixel Sticker
           </h1>
-          <p className="text-sm md:text-base text-neutral-500 max-w-xl mx-auto font-normal leading-relaxed">
+          <p className="text-sm md:text-base text-neutral-300 max-w-xl mx-auto font-normal leading-relaxed">
             Dedikasi penuh pada presisi, estetika, dan perlindungan cat
             kendaraan mewah Anda dengan material premium berstandar
             internasional.
@@ -167,64 +186,109 @@ export default function TentangKamiPage() {
           </div>
         </div>
 
-        {/* SECTION 3: KONTAK & JAM OPERASIONAL */}
-        <div className="bg-neutral-900 text-white rounded-[2.5rem] p-8 md:p-12 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-          <div className="md:col-span-7 space-y-4">
-            <span className="text-[9px] font-black uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-md border border-blue-500/20">
-              Kunjungi Workshop Kami
-            </span>
-            <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight text-white">
-              Siap Mengubah Tampilan Mobil Anda?
-            </h2>
-            <p className="text-xs text-neutral-400 leading-relaxed max-w-md font-normal">
-              Gunakan sistem reservasi online kami untuk mengunci slot tanggal
-              pengerjaan wrapping bodi mobil Anda tanpa perlu mengantre lama di
-              bengkel.
-            </p>
-            <div className="pt-2">
-              <Link
-                href="/booking"
-                className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider px-6 py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95"
-              >
-                <span>Mulai Reservasi Online</span>
-                <ChevronRight size={14} />
-              </Link>
-            </div>
-          </div>
+        {/* SECTION 3: KONTAK & GMAPS */}
+        <div className="bg-neutral-900 text-white rounded-[2.5rem] p-8 md:p-12 shadow-xl space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+            {/* SISI KIRI: DESKRIPSI & KONTAK */}
+            <div className="md:col-span-6 space-y-6">
+              <div className="space-y-3">
+                <span className="text-[9px] font-black uppercase tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1 rounded-md border border-blue-500/20">
+                  Kunjungi Workshop Kami
+                </span>
+                <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight text-white">
+                  Siap Mengubah Tampilan Mobil Anda?
+                </h2>
+                <p className="text-xs text-neutral-400 leading-relaxed font-normal">
+                  Gunakan sistem reservasi online kami untuk mengunci slot
+                  tanggal pengerjaan wrapping bodi mobil Anda tanpa perlu
+                  mengantre lama di bengkel.
+                </p>
+              </div>
 
-          <div className="md:col-span-5 space-y-4 border-t md:border-t-0 md:border-l border-neutral-800 pt-6 md:pt-0 md:pl-8 text-xs font-medium text-neutral-300">
-            <div className="flex items-start gap-3">
-              <MapPin size={16} className="text-blue-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-white font-bold text-xs uppercase tracking-wider mb-0.5">
-                  Lokasi Studio
-                </p>
-                <p className="text-neutral-400 font-normal">
-                  Jl. Raya Outer Ringroad No. 42, Puri Kembangan, Jakarta Barat
-                </p>
+              <div className="pt-2">
+                <Link
+                  href="/booking"
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider px-6 py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+                >
+                  <span>Mulai Reservasi Online</span>
+                  <ChevronRight size={14} />
+                </Link>
+              </div>
+
+              <div className="pt-4 border-t border-neutral-800 space-y-4 text-xs font-medium text-neutral-300">
+                <div className="flex items-start gap-3">
+                  <MapPin size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-white font-bold text-xs uppercase tracking-wider mb-0.5">
+                      Lokasi Toko
+                    </p>
+                    <p className="text-neutral-400 font-normal leading-relaxed">
+                      Pasar mobil kemayoran blok j 8 Jakarta pusat, Kemayoran,
+                      Pasar mobil kemayoran blok j 8, RW.10, Pademangan Tim.,
+                      Kec. Pademangan, Jkt Utara, Daerah Khusus Ibukota Jakarta
+                      14410
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Clock size={16} className="text-purple-500 shrink-0" />
+                  <div>
+                    <p className="text-white font-bold text-xs uppercase tracking-wider mb-0.5">
+                      Jam Operasional
+                    </p>
+                    <p className="text-neutral-400 font-normal">
+                      Senin - Minggu: 10.00 - 00.00 WIB
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Phone size={16} className="text-green-500 shrink-0" />
+                  <div>
+                    <p className="text-white font-bold text-xs uppercase tracking-wider mb-0.5">
+                      WhatsApp Kasir
+                    </p>
+                    <p className="text-neutral-400 font-normal">
+                      +62 812-3456-7890
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Clock size={16} className="text-purple-500 shrink-0" />
-              <div>
-                <p className="text-white font-bold text-xs uppercase tracking-wider mb-0.5">
-                  Jam Operasional
-                </p>
-                <p className="text-neutral-400 font-normal">
-                  Senin - Sabtu: 09.00 - 18.00 WIB (Minggu Libur)
-                </p>
+
+            {/* SISI KANAN: EMBED GMAPS */}
+            <div className="md:col-span-6 space-y-3">
+              <div className="relative w-full h-[320px] md:h-[380px] rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl group bg-neutral-950">
+                {mounted ? (
+                  <iframe
+                    src={gmapsEmbedUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen={true}
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    title="Lokasi Pixel Sticker Workshop"
+                    className="w-full h-full grayscale-[15%] contrast-[105%] group-hover:grayscale-0 transition-all duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500 animate-pulse">
+                    Memuat Peta Lokasi...
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Phone size={16} className="text-green-500 shrink-0" />
-              <div>
-                <p className="text-white font-bold text-xs uppercase tracking-wider mb-0.5">
-                  WhatsApp Kasir
-                </p>
-                <p className="text-neutral-400 font-normal">
-                  +62 812-3456-7890
-                </p>
-              </div>
+
+              {/* TOMBOL PINTASAN BUKA DI GMAPS */}
+              <a
+                href={gmapsDirectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 bg-neutral-800/80 hover:bg-neutral-800 text-neutral-300 hover:text-white text-xs font-semibold px-4 py-3 rounded-xl border border-neutral-700/60 transition-all active:scale-[0.99]"
+              >
+                <span>Buka Rute di Google Maps</span>
+                <ExternalLink size={14} />
+              </a>
             </div>
           </div>
         </div>

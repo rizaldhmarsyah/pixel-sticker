@@ -1,4 +1,3 @@
-// src/app/admin/dashboard/cars/actions.ts
 "use server";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -13,13 +12,14 @@ export async function addCar(formData: FormData) {
   revalidatePath("/admin/dashboard/cars");
 }
 
-export async function deleteCar(id: string) {
+export async function deleteCar(id_cars: string) {
   const supabase = await createClient();
-  await supabase.from("cars").delete().eq("id", id);
+  // REVISI: Target diubah dari id menjadi id_cars
+  await supabase.from("cars").delete().eq("id_cars", id_cars);
   revalidatePath("/admin/dashboard/cars");
 }
 
-export async function updateCar(id: string, formData: FormData) {
+export async function updateCar(id_cars: string, formData: FormData) {
   const supabase = await createClient();
   const brand = formData.get("brand");
   const model = formData.get("model");
@@ -28,6 +28,7 @@ export async function updateCar(id: string, formData: FormData) {
   await supabase
     .from("cars")
     .update({ brand, model, meters_needed })
-    .eq("id", id);
+    // REVISI: Target diubah dari id menjadi id_cars
+    .eq("id_cars", id_cars);
   revalidatePath("/admin/dashboard/cars");
 }

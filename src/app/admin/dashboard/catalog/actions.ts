@@ -6,8 +6,9 @@ import { revalidatePath } from "next/cache";
 export async function addCatalogItem(formData: FormData) {
   const supabase = await createClient();
 
-  // 1. Ambil data dari form input
-  const material_id = formData.get("material_id") as string;
+  // 1. Ambil data dari form input termasuk id_cars baru
+  const id_material = formData.get("id_material") as string;
+  const id_cars = formData.get("id_cars") as string; // SUNTIKAN BARU
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const category = formData.get("category") as string;
@@ -25,7 +26,6 @@ export async function addCatalogItem(formData: FormData) {
       const arrayBuffer = await imageFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Proses upload ke storage bucket 'catalog'
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("catalog")
         .upload(fileName, buffer, {
@@ -33,27 +33,23 @@ export async function addCatalogItem(formData: FormData) {
           upsert: true,
         });
 
-      if (uploadError) {
-        console.error("Gagal upload ke Storage:", uploadError.message);
+      if (uploadError)
         throw new Error("Gagal upload ke Storage: " + uploadError.message);
-      }
 
-      // Ambil URL Publik gambar
       const { data: urlData } = supabase.storage
         .from("catalog")
         .getPublicUrl(fileName);
-
       image_url = urlData.publicUrl;
     } catch (err: any) {
-      console.error("Proses file error:", err.message);
       throw new Error("Gagal memproses gambar: " + err.message);
     }
   }
 
-  // 3. Masukkan data bersih ke tabel database 'catalog'
+  // 3. Masukkan data bersih ke tabel database 'catalog' sesuai kolom baru
   const { error } = await supabase.from("catalog").insert([
     {
-      material_id: material_id === "none" ? null : material_id,
+      id_material: id_material === "none" ? null : id_material,
+      id_cars: id_cars === "none" ? null : id_cars, // SUNTIKAN BARU
       title,
       description,
       category,
@@ -63,32 +59,29 @@ export async function addCatalogItem(formData: FormData) {
     },
   ]);
 
-  if (error) {
-    console.error("Error CMS Katalog:", error.message);
-    throw new Error("Gagal simpan ke database: " + error.message);
-  }
+  if (error) throw new Error("Gagal simpan ke database: " + error.message);
 
-  // 4. Paksa Next.js refresh data di admin dan front-end publik
   revalidatePath("/admin/dashboard/catalog");
   revalidatePath("/catalog");
 }
 
 export async function deleteCatalogItem(formData: FormData) {
   const supabase = await createClient();
-  const id = formData.get("id") as string;
+  const id_catalog = formData.get("id_catalog") as string; // REVISI FIELD
 
-  await supabase.from("catalog").delete().eq("id", id);
+  // REVISI TARGET: id diubah menjadi id_catalog
+  await supabase.from("catalog").delete().eq("id_catalog", id_catalog);
 
   revalidatePath("/admin/dashboard/catalog");
   revalidatePath("/catalog");
 }
 
-//update catalog
 export async function updateCatalogItem(formData: FormData) {
   const supabase = await createClient();
 
-  const id = formData.get("id") as string;
-  const material_id = formData.get("material_id") as string;
+  const id_catalog = formData.get("id_catalog") as string; // REVISI FIELD
+  const id_material = formData.get("id_material") as string;
+  const id_cars = formData.get("id_cars") as string; // SUNTIKAN BARU
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
   const category = formData.get("category") as string;
@@ -97,7 +90,6 @@ export async function updateCatalogItem(formData: FormData) {
   const imageFile = formData.get("image") as File;
   let image_url = null;
 
-  // Jika admin mengupload foto baru saat edit, proses uploadnya
   if (imageFile && imageFile.size > 0) {
     const fileExt = imageFile.name.split(".").pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -124,29 +116,26 @@ export async function updateCatalogItem(formData: FormData) {
     }
   }
 
-  // Susun data yang mau diupdate
   const updateData: any = {
-    material_id: material_id === "none" ? null : material_id,
+    id_material: id_material === "none" ? null : id_material,
+    id_cars: id_cars === "none" ? null : id_cars, // SUNTIKAN BARU
     title,
     description,
     category,
     tag,
   };
 
-  // Hanya update URL gambar kalau ada file baru yang diupload
   if (image_url) {
     updateData.image_url = image_url;
   }
 
+  // REVISI TARGET: eq() diarahkan ke id_catalog
   const { error } = await supabase
     .from("catalog")
     .update(updateData)
-    .eq("id", id);
+    .eq("id_catalog", id_catalog);
 
-  if (error) {
-    console.error("Gagal update katalog:", error.message);
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   revalidatePath("/admin/dashboard/catalog");
   revalidatePath("/catalog");

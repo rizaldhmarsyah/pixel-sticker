@@ -1,3 +1,5 @@
+//src-app-admin-dashboard-materials-page-tsx
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -256,7 +258,7 @@ export default function MaterialsPage() {
                     <tbody className="divide-y divide-neutral-100 bg-white text-neutral-900">
                       {materials.map((item) => (
                         <MaterialRow
-                          key={item.id}
+                          key={item.id_materials} // REVISI: Mengubah item.id menjadi item.id_material
                           item={item}
                           onRefresh={refreshData}
                         />

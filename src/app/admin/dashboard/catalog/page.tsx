@@ -1,3 +1,5 @@
+//src-app-admin-dashboard-catalog-page-tsx
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -12,6 +14,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
+  Car,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -25,9 +28,9 @@ export default function CatalogAdminPage() {
   const formRef = useRef<HTMLFormElement>(null);
   const supabase = createClient();
 
-  // --- STATE MANAGEMENT ---
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [cars, setCars] = useState<any[]>([]); // SUNTIKAN STATE BARU
   const [loadingPage, setLoadingPage] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -37,15 +40,23 @@ export default function CatalogAdminPage() {
     message: string;
   } | null>(null);
 
-  // --- AMBIL DATA DARI SUPABASE ---
   const refreshData = async () => {
     try {
+      // 1. Tarik Master Materials menggunakan id_material
       const { data: matData } = await supabase
         .from("materials")
-        .select("id, name")
+        .select("id_material, name")
         .order("name", { ascending: true });
       if (matData) setMaterials(matData);
 
+      // 2. Tarik Master Cars baru menggunakan id_cars
+      const { data: carData } = await supabase
+        .from("cars")
+        .select("id_cars, brand, model")
+        .order("brand", { ascending: true });
+      if (carData) setCars(carData);
+
+      // 3. Tarik Catalog join dengan relasi baru
       const { data: catData, error: catError } = await supabase
         .from("catalog")
         .select(
@@ -53,7 +64,11 @@ export default function CatalogAdminPage() {
           *,
           materials (
             name,
-            stock
+            stock_meters
+          ),
+          cars (
+            brand,
+            model
           )
         `,
         )
@@ -79,7 +94,6 @@ export default function CatalogAdminPage() {
     refreshData();
   }, []);
 
-  // Otomatis hilangkan pop-up modal setelah 4 detik jika diabaikan
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 4000);
@@ -87,7 +101,6 @@ export default function CatalogAdminPage() {
     }
   }, [notification]);
 
-  // --- PROSES SIMPAN / EDIT DATA ---
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -122,7 +135,6 @@ export default function CatalogAdminPage() {
     }
   };
 
-  // --- PROSES HAPUS DATA ---
   const handleCancelOrDelete = async (id: string) => {
     if (!confirm("Apakah kamu yakin ingin menghapus item katalog ini?")) return;
 
@@ -130,7 +142,7 @@ export default function CatalogAdminPage() {
     setNotification(null);
 
     const formData = new FormData();
-    formData.append("id", id);
+    formData.append("id_catalog", id); // REVISI TARGET PAYLOAD
 
     try {
       await deleteCatalogItem(formData);
@@ -138,7 +150,7 @@ export default function CatalogAdminPage() {
         type: "success",
         message: "Item katalog berhasil dihapus dari etalase!",
       });
-      if (editItem?.id === id) setEditItem(null);
+      if (editItem?.id_catalog === id) setEditItem(null);
       await refreshData();
     } catch (err: any) {
       setNotification({
@@ -181,16 +193,13 @@ export default function CatalogAdminPage() {
           </div>
         </div>
 
-        {/* --- POP-UP MODAL OVERLAY (TEMA APPLE GLASS LIGHT) --- */}
+        {/* --- POP-UP MODAL OVERLAY --- */}
         {notification && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/10 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-white/80 backdrop-blur-xl border border-neutral-200 p-8 rounded-[2rem] max-w-sm w-full text-center shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
-              {/* Garis Aksen Atas */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/10 backdrop-blur-md">
+            <div className="bg-white/80 backdrop-blur-xl border border-neutral-200 p-8 rounded-[2rem] max-w-sm w-full text-center shadow-2xl relative overflow-hidden">
               <div
                 className={`absolute top-0 inset-x-0 h-1.5 ${notification.type === "success" ? "bg-emerald-500" : "bg-rose-500"}`}
               />
-
-              {/* Icon Status */}
               <div className="mx-auto w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-neutral-50 border border-neutral-200/60">
                 {notification.type === "success" ? (
                   <CheckCircle2 size={24} className="text-emerald-500" />
@@ -198,8 +207,6 @@ export default function CatalogAdminPage() {
                   <AlertTriangle size={24} className="text-rose-500" />
                 )}
               </div>
-
-              {/* Teks Konten Pop-up */}
               <h3 className="text-sm font-bold uppercase tracking-wider text-neutral-900 mb-1.5">
                 {notification.type === "success"
                   ? "Tindakan Berhasil"
@@ -208,15 +215,13 @@ export default function CatalogAdminPage() {
               <p className="text-neutral-500 text-xs font-normal leading-relaxed mb-6 px-2 text-center">
                 {notification.message}
               </p>
-
-              {/* Tombol Close Pop-up */}
               <button
                 type="button"
                 onClick={() => setNotification(null)}
-                className={`w-full font-bold py-3 rounded-xl text-xs uppercase tracking-widest transition-all active:scale-98 text-white ${
+                className={`w-full font-bold py-3 rounded-xl text-xs uppercase tracking-widest text-white ${
                   notification.type === "success"
-                    ? "bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/10"
-                    : "bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/10"
+                    ? "bg-emerald-600"
+                    : "bg-rose-600"
                 }`}
               >
                 Oke, Mantap
@@ -257,11 +262,15 @@ export default function CatalogAdminPage() {
               <form
                 ref={formRef}
                 onSubmit={handleSubmit}
-                key={editItem?.id || "tambah"}
+                key={editItem?.id_catalog || "tambah"}
                 className="space-y-4"
               >
                 {editItem && (
-                  <input type="hidden" name="id" value={editItem.id} />
+                  <input
+                    type="hidden"
+                    name="id_catalog"
+                    value={editItem.id_catalog}
+                  />
                 )}
 
                 <div className="space-y-1.5">
@@ -273,7 +282,7 @@ export default function CatalogAdminPage() {
                     required
                     defaultValue={editItem?.title || ""}
                     placeholder="Premium Satin Midnight Blue"
-                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none transition-all focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 placeholder:text-neutral-400"
+                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none transition-all focus:bg-white focus:border-blue-500"
                   />
                 </div>
 
@@ -282,20 +291,46 @@ export default function CatalogAdminPage() {
                     Hubungkan ke Stok Gudang
                   </label>
                   <select
-                    name="material_id"
-                    defaultValue={editItem?.material_id || "none"}
-                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none transition-all focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
+                    name="id_material"
+                    defaultValue={editItem?.id_material || "none"}
+                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none cursor-pointer focus:bg-white focus:border-blue-500"
                   >
                     <option value="none" className="bg-white text-neutral-900">
                       -- Jangan Hubungkan (Hanya Portofolio) --
                     </option>
                     {materials.map((m) => (
                       <option
-                        key={m.id}
-                        value={m.id}
+                        key={m.id_material}
+                        value={m.id_material}
                         className="bg-white text-neutral-900"
                       >
                         {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* SUNTIKAN COMPONENT BARU: REKOMENDASI DROPDOWN MOBIL */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-0.5 flex items-center gap-1">
+                    <Car size={11} className="text-blue-500" /> Rekomendasi Tipe
+                    Mobil
+                  </label>
+                  <select
+                    name="id_cars"
+                    defaultValue={editItem?.id_cars || "none"}
+                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none cursor-pointer focus:bg-white focus:border-blue-500"
+                  >
+                    <option value="none" className="bg-white text-neutral-900">
+                      -- Berlaku Universal (Semua Mobil) --
+                    </option>
+                    {cars.map((c) => (
+                      <option
+                        key={c.id_cars}
+                        value={c.id_cars}
+                        className="bg-white text-neutral-900"
+                      >
+                        {c.brand} - {c.model}
                       </option>
                     ))}
                   </select>
@@ -308,7 +343,7 @@ export default function CatalogAdminPage() {
                   <select
                     name="category"
                     defaultValue={editItem?.category || "Satin"}
-                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none transition-all focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer"
+                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none cursor-pointer focus:bg-white focus:border-blue-500"
                   >
                     <option value="Satin" className="bg-white text-neutral-900">
                       Satin
@@ -339,7 +374,7 @@ export default function CatalogAdminPage() {
                     name="tag"
                     defaultValue={editItem?.tag || ""}
                     placeholder="Best Seller / Promo / New"
-                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none transition-all focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 placeholder:text-neutral-400"
+                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none transition-all focus:bg-white focus:border-blue-500"
                   />
                 </div>
 
@@ -351,7 +386,7 @@ export default function CatalogAdminPage() {
                     type="file"
                     name="image"
                     accept="image/*"
-                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-2.5 text-xs text-neutral-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 outline-none transition-all cursor-pointer"
+                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-2.5 text-xs text-neutral-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
                   />
                 </div>
 
@@ -364,14 +399,14 @@ export default function CatalogAdminPage() {
                     rows={3}
                     defaultValue={editItem?.description || ""}
                     placeholder="Bahan premium buatan Amerika, ketahanan 3 tahun..."
-                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none transition-all focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 resize-none placeholder:text-neutral-400"
+                    className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none resize-none focus:bg-white focus:border-blue-500"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`w-full font-bold py-3.5 rounded-xl mt-4 transition-all active:scale-95 shadow-sm text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 ${editItem ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-neutral-900 text-white hover:bg-black"}`}
+                  className={`w-full font-bold py-3.5 rounded-xl mt-4 transition-all active:scale-95 text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 ${editItem ? "bg-blue-600 text-white" : "bg-neutral-900 text-white"}`}
                 >
                   {isSubmitting ? (
                     <>
@@ -413,17 +448,19 @@ export default function CatalogAdminPage() {
                           Kategori
                         </th>
                         <th className="px-6 py-4.5 text-[10px] font-bold text-neutral-400 uppercase tracking-widest text-center">
-                          Hubungan Stok
+                          Kecocokan Stok / Unit
                         </th>
                         <th className="px-6 py-4.5"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100 bg-white text-neutral-900">
                       {catalogItems.map((item) => {
-                        const isItemDeleting = deletingId === item.id;
+                        const currentCatId = item.id_catalog || item.id;
+                        const isItemDeleting = deletingId === currentCatId;
+
                         return (
                           <tr
-                            key={item.id}
+                            key={currentCatId}
                             className={`transition-colors ${isItemDeleting ? "bg-red-50/60 opacity-50" : "hover:bg-neutral-50/80"}`}
                           >
                             <td className="px-6 py-4.5">
@@ -455,27 +492,34 @@ export default function CatalogAdminPage() {
                               {item.category}
                             </td>
                             <td className="px-6 py-4.5 text-center">
-                              {item.materials ? (
-                                <div className="text-xs">
+                              <div className="text-xs space-y-1">
+                                {item.materials ? (
                                   <p className="text-neutral-800 font-bold">
-                                    {item.materials.name}
+                                    📦 {item.materials.name} (
+                                    {item.materials.stock_meters}m)
                                   </p>
-                                  <p className="text-[10px] text-neutral-400 font-medium mt-0.5">
-                                    Sisa: {item.materials.stock}m
+                                ) : (
+                                  <p className="text-[10px] text-neutral-400 font-medium italic">
+                                    Bahan Umum
                                   </p>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-neutral-400 font-medium italic">
-                                  Portofolio Saja
-                                </span>
-                              )}
+                                )}
+                                {item.cars ? (
+                                  <p className="text-[10px] text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded inline-block">
+                                    🚗 {item.cars.brand} {item.cars.model}
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-neutral-400 italic">
+                                    Semua Jenis Mobil
+                                  </p>
+                                )}
+                              </div>
                             </td>
                             <td className="px-6 py-4.5">
                               <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
                                   onClick={() => setEditItem(item)}
-                                  className="text-neutral-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-xl transition-all"
+                                  className="text-neutral-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-xl"
                                   title="Edit Item"
                                 >
                                   <Pencil size={14} strokeWidth={2.5} />
@@ -483,8 +527,10 @@ export default function CatalogAdminPage() {
                                 <button
                                   type="button"
                                   disabled={isItemDeleting}
-                                  onClick={() => handleCancelOrDelete(item.id)}
-                                  className="text-neutral-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-xl transition-all"
+                                  onClick={() =>
+                                    handleCancelOrDelete(currentCatId)
+                                  }
+                                  className="text-neutral-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-xl"
                                   title="Hapus Item"
                                 >
                                   {isItemDeleting ? (

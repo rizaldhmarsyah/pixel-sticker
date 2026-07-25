@@ -1,4 +1,3 @@
-// src/app/admin/dashboard/materials/actions.ts
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
@@ -23,17 +22,22 @@ export async function addMaterial(formData: FormData) {
   revalidatePath("/admin/dashboard/materials");
 }
 
-export async function deleteMaterial(id: string) {
-  // Ubah jadi string karena UUID
+// REVISI: Parameter diganti menjadi id_material
+export async function deleteMaterial(id_material: string) {
   const supabase = await createClient();
 
-  const { error } = await supabase.from("materials").delete().eq("id", id);
+  // REVISI: Target pencarian eq diubah dari id menjadi id_material
+  const { error } = await supabase
+    .from("materials")
+    .delete()
+    .eq("id_materials", id_materials);
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/dashboard/materials");
 }
 
-export async function updateMaterial(id: string, formData: FormData) {
+// REVISI: Parameter diganti menjadi id_material
+export async function updateMaterial(id_materials: string, formData: FormData) {
   const supabase = await createClient();
   const name = formData.get("name") as string;
   const price_per_meter = Number(formData.get("price"));
@@ -42,7 +46,8 @@ export async function updateMaterial(id: string, formData: FormData) {
   const { error } = await supabase
     .from("materials")
     .update({ name, price_per_meter, stock_meters })
-    .eq("id", id);
+    // REVISI: Target pencarian eq diubah dari id menjadi id_material
+    .eq("id_materials", id_materials);
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/dashboard/materials");
