@@ -28,7 +28,7 @@ export async function deleteMaterial(id_material: string) {
 
   // REVISI: Target pencarian eq diubah dari id menjadi id_material
   const { error } = await supabase
-    .from("materials")
+    .from("id_materials")
     .delete()
     .eq("id_materials", id_materials);
 
@@ -44,7 +44,7 @@ export async function updateMaterial(id_materials: string, formData: FormData) {
   const stock_meters = Number(formData.get("stock"));
 
   const { error } = await supabase
-    .from("materials")
+    .from("id_materials")
     .update({ name, price_per_meter, stock_meters })
     // REVISI: Target pencarian eq diubah dari id menjadi id_material
     .eq("id_materials", id_materials);
