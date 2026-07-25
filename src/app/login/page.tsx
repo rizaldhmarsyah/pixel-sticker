@@ -14,11 +14,17 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsLoggingIn(true);
     try {
+      // Pastikan mengarahkan ke Route Handler /auth/callback
+      const origin =
+        typeof window !== "undefined"
+          ? window.location.origin
+          : "https://pixel-sticker.vercel.app";
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          // Otomatis diarahkan kembali ke halaman booking setelah sukses login
-          redirectTo: `${window.location.origin}/booking`,
+          // ✅ BENAR: Arahkan dulu ke callback route, lalu minta callback me-redirect ke /booking
+          redirectTo: `${origin}/auth/callback?next=/booking`,
         },
       });
 
@@ -48,7 +54,7 @@ export default function LoginPage() {
           <span>Kembali ke Beranda</span>
         </Link>
 
-        {/* --- CARD UTAMA LOGIN (WARNA BG SOLID AGAR KONTRAS & MUDAH DIBACA) --- */}
+        {/* --- CARD UTAMA LOGIN --- */}
         <div className="bg-neutral-900 border border-white/10 p-8 rounded-[2.5rem] shadow-2xl text-center relative overflow-hidden">
           {/* Garis Aksen Desain Atas */}
           <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
@@ -66,12 +72,12 @@ export default function LoginPage() {
             booking workshop kamu.
           </p>
 
-          {/* --- TOMBOL SAKTI GOOGLE OAUTH --- */}
+          {/* --- TOMBOL GOOGLE OAUTH --- */}
           <button
             type="button"
             disabled={isLoggingIn}
             onClick={handleGoogleLogin}
-            className="w-full bg-white text-black hover:bg-neutral-200 disabled:opacity-50 font-bold py-4 px-6 rounded-xl text-xs uppercase tracking-widest transition-all active:scale-[0.97] flex items-center justify-center gap-3 shadow-xl shadow-white/5 disabled:cursor-not-allowed"
+            className="w-full bg-white text-black hover:bg-neutral-200 disabled:opacity-50 font-bold py-4 px-6 rounded-xl text-xs uppercase tracking-widest transition-all active:scale-[0.97] flex items-center justify-center gap-3 shadow-xl shadow-white/5 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoggingIn ? (
               <>
