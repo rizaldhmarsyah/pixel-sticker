@@ -7,8 +7,12 @@ export async function addMaterial(formData: FormData) {
   const supabase = await createClient();
 
   const name = formData.get("name") as string;
-  const price_per_meter = Number(formData.get("price"));
-  const stock_meters = Number(formData.get("stock"));
+  const priceRaw = Number(formData.get("price"));
+  const stockRaw = Number(formData.get("stock"));
+
+  // Validasi angka agar tidak NaN
+  const price_per_meter = isNaN(priceRaw) ? 0 : priceRaw;
+  const stock_meters = isNaN(stockRaw) ? 0 : stockRaw;
 
   const { error } = await supabase.from("materials").insert([
     {
@@ -18,37 +22,39 @@ export async function addMaterial(formData: FormData) {
     },
   ]);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("Gagal menambah material: " + error.message);
   revalidatePath("/admin/dashboard/materials");
 }
 
-export async function deleteMaterial(id_material: string) {
+export async function deleteMaterial(id_materials: string) {
   const supabase = await createClient();
 
-  // 1. Target tabel: "materials"
-  // 2. .eq("nama_kolom_di_supabase", nama_variabel)
+  // REVISI: Samakan nama kolom primary key di Supabase (id_materials)
   const { error } = await supabase
     .from("materials")
     .delete()
-    .eq("id_material", id_material);
+    .eq("id_materials", id_materials);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("Gagal menghapus material: " + error.message);
   revalidatePath("/admin/dashboard/materials");
 }
 
-export async function updateMaterial(id_material: string, formData: FormData) {
+export async function updateMaterial(id_materials: string, formData: FormData) {
   const supabase = await createClient();
-  const name = formData.get("name") as string;
-  const price_per_meter = Number(formData.get("price"));
-  const stock_meters = Number(formData.get("stock"));
 
-  // 1. Target tabel: "materials"
-  // 2. .eq("nama_kolom_di_supabase", nama_variabel)
+  const name = formData.get("name") as string;
+  const priceRaw = Number(formData.get("price"));
+  const stockRaw = Number(formData.get("stock"));
+
+  const price_per_meter = isNaN(priceRaw) ? 0 : priceRaw;
+  const stock_meters = isNaN(stockRaw) ? 0 : stockRaw;
+
+  // REVISI: Samakan nama kolom primary key di Supabase (id_materials)
   const { error } = await supabase
     .from("materials")
     .update({ name, price_per_meter, stock_meters })
-    .eq("id_material", id_material);
+    .eq("id_materials", id_materials);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("Gagal memperbarui material: " + error.message);
   revalidatePath("/admin/dashboard/materials");
 }

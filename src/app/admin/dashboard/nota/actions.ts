@@ -10,13 +10,28 @@ export async function saveNota(data: any) {
     throw new Error("Nomor Nota harus dibuat dulu (Klik tombol Generate)");
   }
 
-  // 🛠️ PERBAIKAN: Mengubah kunci objek menjadi 'id_materials' agar sesuai skema database Supabase
+  // 1. Sanitasi Angka Total agar tidak error saat dikirim ke PostgreSQL
+  let cleanTotal = 0;
+  if (typeof data.total === "number") {
+    cleanTotal = data.total;
+  } else if (typeof data.total === "string") {
+    // Menghapus karakter non-angka (seperti "Rp", titik, koma, spasi)
+    const numericString = data.total.replace(/[^0-9]/g, "");
+    cleanTotal = numericString ? parseFloat(numericString) : 0;
+  }
+
+  // 2. Format Payload yang Sesuai Skema Supabase
   const payload = {
     receipt_no: data.noKuitansi,
     customer_name: data.nama,
-    id_materials: data.id_materials === "" ? null : data.id_materials,
-    description: data.keterangan,
-    total_amount: data.total,
+    id_materials:
+      !data.id_materials ||
+      data.id_materials === "" ||
+      data.id_materials === "none"
+        ? null
+        : data.id_materials,
+    description: data.keterangan || "",
+    total_amount: cleanTotal,
   };
 
   const { error } = await supabase
@@ -24,23 +39,25 @@ export async function saveNota(data: any) {
     .upsert(payload, { onConflict: "receipt_no" });
 
   if (error) {
-    console.error("Supabase Error:", error.message);
-    throw new Error(error.message);
+    console.error("Supabase Error (saveNota):", error.message);
+    throw new Error("Gagal menyimpan nota: " + error.message);
   }
 
-  // 🛠️ PERBAIKAN: Mengalihkan revalidatePath ke /nota agar UI Archive ter-refresh otomatis
   revalidatePath("/admin/dashboard/nota");
 }
 
 export async function deleteNota(id_receipts: string) {
   const supabase = await createClient();
+
   const { error } = await supabase
     .from("receipts")
     .delete()
     .eq("id_receipts", id_receipts);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("Supabase Error (deleteNota):", error.message);
+    throw new Error("Gagal menghapus nota: " + error.message);
+  }
 
-  // 🛠️ PERBAIKAN: Mengalihkan revalidatePath ke /nota agar UI Archive ter-refresh otomatis
   revalidatePath("/admin/dashboard/nota");
 }
