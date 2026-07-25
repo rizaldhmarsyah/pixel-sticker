@@ -22,32 +22,32 @@ export async function addMaterial(formData: FormData) {
   revalidatePath("/admin/dashboard/materials");
 }
 
-// REVISI: Parameter diganti menjadi id_material
 export async function deleteMaterial(id_material: string) {
   const supabase = await createClient();
 
-  // REVISI: Target pencarian eq diubah dari id menjadi id_material
+  // 1. Target tabel: "materials"
+  // 2. .eq("nama_kolom_di_supabase", nama_variabel)
   const { error } = await supabase
-    .from("id_materials")
+    .from("materials")
     .delete()
-    .eq("id_materials", id_materials);
+    .eq("id_material", id_material);
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/dashboard/materials");
 }
 
-// REVISI: Parameter diganti menjadi id_material
-export async function updateMaterial(id_materials: string, formData: FormData) {
+export async function updateMaterial(id_material: string, formData: FormData) {
   const supabase = await createClient();
   const name = formData.get("name") as string;
   const price_per_meter = Number(formData.get("price"));
   const stock_meters = Number(formData.get("stock"));
 
+  // 1. Target tabel: "materials"
+  // 2. .eq("nama_kolom_di_supabase", nama_variabel)
   const { error } = await supabase
-    .from("id_materials")
+    .from("materials")
     .update({ name, price_per_meter, stock_meters })
-    // REVISI: Target pencarian eq diubah dari id menjadi id_material
-    .eq("id_materials", id_materials);
+    .eq("id_material", id_material);
 
   if (error) throw new Error(error.message);
   revalidatePath("/admin/dashboard/materials");
