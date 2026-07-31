@@ -345,8 +345,8 @@ export default function CatalogAdminPage() {
                     defaultValue={editItem?.category || "Satin"}
                     className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-3 text-xs font-medium text-neutral-900 outline-none cursor-pointer focus:bg-white focus:border-blue-500"
                   >
-                    <option value="Satin" className="bg-white text-neutral-900">
-                      Satin
+                    <option value="Doff" className="bg-white text-neutral-900">
+                      Doff
                     </option>
                     <option
                       value="Glossy"
@@ -355,13 +355,16 @@ export default function CatalogAdminPage() {
                       Glossy
                     </option>
                     <option
-                      value="Chrome"
+                      value="Carbon"
                       className="bg-white text-neutral-900"
                     >
-                      Chrome
+                      Carbon
                     </option>
-                    <option value="PPF" className="bg-white text-neutral-900">
-                      PPF
+                    <option value="Matt" className="bg-white text-neutral-900">
+                      Matt
+                    </option>
+                    <option value="Satin" className="bg-white text-neutral-900">
+                      Satin
                     </option>
                   </select>
                 </div>
