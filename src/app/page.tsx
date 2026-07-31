@@ -110,7 +110,7 @@ export default async function Home() {
             <div className="group relative flex flex-col bg-neutral-900/30 border border-neutral-800 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden transition-all hover:border-neutral-600">
               <div className="relative h-48 sm:h-56 md:h-64 w-full overflow-hidden">
                 <Image
-                  src="/card-1.jpg"
+                  src="/card-1.png"
                   alt="Full Body Wrap"
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -134,12 +134,12 @@ export default async function Home() {
               </div>
             </div>
 
-            {/* Card 2: Cutting Sticker - Fixed with sizes */}
+            {/* Card 2: Custom Printing - Fixed with sizes */}
             <div className="group relative flex flex-col bg-neutral-900/30 border border-neutral-800 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden transition-all hover:border-neutral-600">
               <div className="relative h-48 sm:h-56 md:h-64 w-full overflow-hidden">
                 <Image
-                  src="/card-2.jpg"
-                  alt="Cutting Sticker Detail"
+                  src="/card-3.png"
+                  alt="Custom Printing Detail"
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover group-hover:scale-110 transition-transform duration-700 opacity-80"
@@ -147,7 +147,7 @@ export default async function Home() {
               </div>
               <div className="p-6 md:p-10">
                 <h3 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4 text-white">
-                  Cutting Sticker
+                  Custom Printing
                 </h3>
                 <p className="text-sm md:text-base text-neutral-400 leading-relaxed mb-6 font-light">
                   Desain custom dengan presisi milimeter untuk branding atau
