@@ -13,7 +13,7 @@ export default function PublicCatalogPage() {
   const [loading, setLoading] = useState(true);
 
   const supabase = createClient();
-  const categories = ["Semua", "Satin", "Glossy", "Chrome", "PPF"];
+  const categories = ["Semua", "Doff", "Glossy", "Carbon", "Matt", "Satin"];
 
   const fetchCatalog = async () => {
     setLoading(true);
