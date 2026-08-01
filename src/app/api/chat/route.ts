@@ -61,14 +61,17 @@ export async function POST(req: Request) {
       }
 
       // Cek 2: Cek per kata (misal: user cuma ngetik "pajero", sedangkan DB "pajero sport")
-      const modelTokens = modelName.split(" ").filter((t) => t.length > 2);
+      // Tipe data `(t: string)` eksplisit untuk menghindari Type Error Vercel Build
+      const modelTokens = modelName
+        .split(" ")
+        .filter((t: string) => t.length > 2);
       const userTokens = conversationHistoryText
         .split(/\s+/)
-        .filter((t) => t.length > 2);
+        .filter((t: string) => t.length > 2);
 
-      const hasModelMatch = modelTokens.some((token) =>
+      const hasModelMatch = modelTokens.some((token: string) =>
         userTokens.some(
-          (uToken) => uToken.includes(token) || token.includes(uToken),
+          (uToken: string) => uToken.includes(token) || token.includes(uToken),
         ),
       );
 
@@ -82,10 +85,12 @@ export async function POST(req: Request) {
 
       const keywords = matName
         .split(" ")
-        .map((k) => k.replace(/[^a-z0-9]/g, ""))
-        .filter((k) => k.length > 2);
+        .map((k: string) => k.replace(/[^a-z0-9]/g, ""))
+        .filter((k: string) => k.length > 2);
 
-      return keywords.some((kw) => conversationHistoryText.includes(kw));
+      return keywords.some((kw: string) =>
+        conversationHistoryText.includes(kw),
+      );
     });
 
     let systemContext = "";
