@@ -110,7 +110,7 @@ export default async function Home() {
             <div className="group relative flex flex-col bg-neutral-900/30 border border-neutral-800 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden transition-all hover:border-neutral-600">
               <div className="relative h-48 sm:h-56 md:h-64 w-full overflow-hidden">
                 <Image
-                  src="/card-1.png"
+                  src="/fullwrap.png"
                   alt="Full Body Wrap"
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
