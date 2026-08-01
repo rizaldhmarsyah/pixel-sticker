@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export async function addCatalogItem(formData: FormData) {
   const supabase = await createClient();
 
-  // 1. Ambil data dari form input
+  // 1. Ambil data teks dari form input
   const id_material = formData.get("id_material") as string;
   const id_cars = formData.get("id_cars") as string;
   const title = formData.get("title") as string;
@@ -14,47 +14,61 @@ export async function addCatalogItem(formData: FormData) {
   const category = formData.get("category") as string;
   const tag = (formData.get("tag") as string) || null;
 
-  const imageFile = formData.get("image") as File;
-  let image_url = null;
+  // 2. 🔄 AMBIL BANYAK BERKAS MEDIA (Gambar & Video)
+  const imageFiles = formData.getAll("image") as File[];
+  const uploadedUrls: string[] = [];
 
-  // 2. Proses upload gambar jika ada file yang dipilih
-  if (imageFile && imageFile.size > 0) {
-    const fileExt = imageFile.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+  // Filter berkas yang valid (ukuran > 0)
+  const validFiles = imageFiles.filter((file) => file && file.size > 0);
 
-    try {
-      const arrayBuffer = await imageFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+  if (validFiles.length > 0) {
+    for (const file of validFiles) {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("catalog")
-        .upload(fileName, buffer, {
-          contentType: imageFile.type,
-          upsert: true,
-        });
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
-      if (uploadError)
-        throw new Error("Gagal upload ke Storage: " + uploadError.message);
+        const { error: uploadError } = await supabase.storage
+          .from("catalog")
+          .upload(fileName, buffer, {
+            contentType: file.type,
+            upsert: true,
+          });
 
-      const { data: urlData } = supabase.storage
-        .from("catalog")
-        .getPublicUrl(fileName);
-      image_url = urlData.publicUrl;
-    } catch (err: any) {
-      throw new Error("Gagal memproses gambar: " + err.message);
+        if (uploadError) {
+          console.error("Gagal upload file:", uploadError.message);
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("catalog")
+          .getPublicUrl(fileName);
+
+        if (urlData?.publicUrl) {
+          uploadedUrls.push(urlData.publicUrl);
+        }
+      } catch (err: any) {
+        console.error("Gagal memproses file media:", err.message);
+      }
     }
   }
 
-  // 3. PERBAIKAN: Gunakan 'id_materials' (pakai 's') sesuai kolom di Supabase
+  // Simpan array URL sebagai stringified JSON agar kompatibel dengan kolom text/json
+  const finalMediaUrl =
+    uploadedUrls.length > 0 ? JSON.stringify(uploadedUrls) : null;
+
+  // 3. Simpan data baru ke Supabase database
   const { error } = await supabase.from("catalog").insert([
     {
-      id_materials: id_material === "none" || !id_material ? null : id_material, // ✅ REVISI KOLOM
+      id_materials: id_material === "none" || !id_material ? null : id_material,
       id_cars: id_cars === "none" || !id_cars ? null : id_cars,
       title,
       description,
       category,
       tag,
-      image_url,
+      image_url: finalMediaUrl,
       is_published: true,
     },
   ]);
@@ -91,38 +105,45 @@ export async function updateCatalogItem(formData: FormData) {
   const category = formData.get("category") as string;
   const tag = (formData.get("tag") as string) || null;
 
-  const imageFile = formData.get("image") as File;
-  let image_url = null;
+  // 🔄 AMBIL BANYAK BERKAS MEDIA UNTUK UPDATE
+  const imageFiles = formData.getAll("image") as File[];
+  const uploadedUrls: string[] = [];
 
-  if (imageFile && imageFile.size > 0) {
-    const fileExt = imageFile.name.split(".").pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const validFiles = imageFiles.filter((file) => file && file.size > 0);
 
-    try {
-      const arrayBuffer = await imageFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+  if (validFiles.length > 0) {
+    for (const file of validFiles) {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("catalog")
-        .upload(fileName, buffer, {
-          contentType: imageFile.type,
-          upsert: true,
-        });
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from("catalog")
-          .getPublicUrl(fileName);
-        image_url = urlData.publicUrl;
+          .upload(fileName, buffer, {
+            contentType: file.type,
+            upsert: true,
+          });
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from("catalog")
+            .getPublicUrl(fileName);
+
+          if (urlData?.publicUrl) {
+            uploadedUrls.push(urlData.publicUrl);
+          }
+        }
+      } catch (err: any) {
+        console.error("Gagal ganti media:", err.message);
       }
-    } catch (err: any) {
-      console.error("Gagal ganti gambar:", err.message);
     }
   }
 
-  // PERBAIKAN: Gunakan 'id_materials' (pakai 's') sesuai kolom di Supabase
   const updateData: any = {
-    id_materials: id_material === "none" || !id_material ? null : id_material, // ✅ REVISI KOLOM
+    id_materials: id_material === "none" || !id_material ? null : id_material,
     id_cars: id_cars === "none" || !id_cars ? null : id_cars,
     title,
     description,
@@ -130,8 +151,9 @@ export async function updateCatalogItem(formData: FormData) {
     tag,
   };
 
-  if (image_url) {
-    updateData.image_url = image_url;
+  // Jika ada file media baru yang diunggah, perbarui kolom image_url
+  if (uploadedUrls.length > 0) {
+    updateData.image_url = JSON.stringify(uploadedUrls);
   }
 
   const { error } = await supabase

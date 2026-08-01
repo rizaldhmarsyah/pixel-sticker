@@ -1,5 +1,3 @@
-//src-app-admin-dashboard-catalog-page-tsx
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -15,6 +13,8 @@ import {
   AlertTriangle,
   Loader2,
   Car,
+  Video,
+  Layers,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
@@ -30,7 +30,7 @@ export default function CatalogAdminPage() {
 
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [materials, setMaterials] = useState<any[]>([]);
-  const [cars, setCars] = useState<any[]>([]); // SUNTIKAN STATE BARU
+  const [cars, setCars] = useState<any[]>([]);
   const [loadingPage, setLoadingPage] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -40,23 +40,68 @@ export default function CatalogAdminPage() {
     message: string;
   } | null>(null);
 
+  // State untuk menampung live preview file yang sedang dipilih di form
+  const [selectedMediaPreviews, setSelectedMediaPreviews] = useState<
+    { url: string; isVideo: boolean }[]
+  >([]);
+
+  // 📝 Helper mendeteksi ekstensi video
+  const isVideoUrl = (url: string | null) => {
+    if (!url) return false;
+    const videoExtensions = [".mp4", ".webm", ".ogg", ".mov", ".m4v"];
+    return videoExtensions.some(
+      (ext) =>
+        url.toLowerCase().endsWith(ext) || url.toLowerCase().includes("video"),
+    );
+  };
+
+  // 📝 Helper mengambil media utama untuk thumbnail tabel (mendukung string tunggal maupun array)
+  const getMainMedia = (mediaData: any) => {
+    if (!mediaData) return null;
+    if (Array.isArray(mediaData)) return mediaData[0] || null;
+    if (typeof mediaData === "string") {
+      // Jika di database berupa string JSON array bersarang, kita parse
+      if (mediaData.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(mediaData);
+          return parsed[0] || null;
+        } catch {
+          return mediaData;
+        }
+      }
+      return mediaData;
+    }
+    return null;
+  };
+
+  // 📝 Helper menghitung total media yang diunggah
+  const getMediaCount = (mediaData: any) => {
+    if (!mediaData) return 0;
+    if (Array.isArray(mediaData)) return mediaData.length;
+    if (typeof mediaData === "string" && mediaData.startsWith("[")) {
+      try {
+        return JSON.parse(mediaData).length;
+      } catch {
+        return 1;
+      }
+    }
+    return 1;
+  };
+
   const refreshData = async () => {
     try {
-      // 1. Tarik Master Materials menggunakan id_material
       const { data: matData } = await supabase
         .from("materials")
         .select("id_material, name")
         .order("name", { ascending: true });
       if (matData) setMaterials(matData);
 
-      // 2. Tarik Master Cars baru menggunakan id_cars
       const { data: carData } = await supabase
         .from("cars")
         .select("id_cars, brand, model")
         .order("brand", { ascending: true });
       if (carData) setCars(carData);
 
-      // 3. Tarik Catalog join dengan relasi baru
       const { data: catData, error: catError } = await supabase
         .from("catalog")
         .select(
@@ -101,6 +146,18 @@ export default function CatalogAdminPage() {
     }
   }, [notification]);
 
+  // Handle perubahan input file untuk memunculkan banyak preview sekaligus
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const previews = Array.from(files).map((file) => ({
+      url: URL.createObjectURL(file),
+      isVideo: file.type.startsWith("video/"),
+    }));
+    setSelectedMediaPreviews(previews);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -113,16 +170,17 @@ export default function CatalogAdminPage() {
         await updateCatalogItem(formData);
         setNotification({
           type: "success",
-          message: "Perubahan katalog berhasil disimpan!",
+          message: "Perubahan katalog multi-media berhasil disimpan!",
         });
         setEditItem(null);
       } else {
         await addCatalogItem(formData);
         setNotification({
           type: "success",
-          message: "Item baru berhasil ditampilkan di katalog!",
+          message: "Item baru dengan multi-media berhasil ditambahkan!",
         });
         formRef.current?.reset();
+        setSelectedMediaPreviews([]);
       }
       await refreshData();
     } catch (err: any) {
@@ -142,7 +200,7 @@ export default function CatalogAdminPage() {
     setNotification(null);
 
     const formData = new FormData();
-    formData.append("id_catalog", id); // REVISI TARGET PAYLOAD
+    formData.append("id_catalog", id);
 
     try {
       await deleteCatalogItem(formData);
@@ -186,8 +244,8 @@ export default function CatalogAdminPage() {
                 CMS Katalog Depan
               </h1>
               <p className="text-neutral-400 text-xs font-normal mt-1">
-                Kelola etalase produk dan portofolio stiker yang tampil di
-                website utama.
+                Kelola etalase produk portofolio stiker (Mendukung Unggah Banyak
+                Foto & Video Sekaligus).
               </p>
             </div>
           </div>
@@ -250,7 +308,10 @@ export default function CatalogAdminPage() {
                 {editItem && (
                   <button
                     type="button"
-                    onClick={() => setEditItem(null)}
+                    onClick={() => {
+                      setEditItem(null);
+                      setSelectedMediaPreviews([]);
+                    }}
                     className="text-neutral-500 hover:text-neutral-900 transition-colors flex items-center gap-1 text-[11px] font-bold bg-neutral-100 px-2.5 py-1 rounded-lg border border-neutral-200"
                   >
                     <X size={12} />
@@ -310,7 +371,6 @@ export default function CatalogAdminPage() {
                   </select>
                 </div>
 
-                {/* SUNTIKAN COMPONENT BARU: REKOMENDASI DROPDOWN MOBIL */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-0.5 flex items-center gap-1">
                     <Car size={11} className="text-blue-500" /> Rekomendasi Tipe
@@ -381,16 +441,59 @@ export default function CatalogAdminPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                {/* 🔄 REVISI UPLOAD BERKAS: Mengaktifkan atribut 'multiple' */}
+                <div className="space-y-2">
                   <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest ml-0.5">
-                    Upload Foto {editItem && "(Kosongkan jika tidak diganti)"}
+                    Upload Berkas Media{" "}
+                    {editItem && "(Kosongkan jika tidak diganti)"}
                   </label>
                   <input
                     type="file"
                     name="image"
-                    accept="image/*"
+                    multiple
+                    accept="image/*,video/*"
+                    onChange={handleFileChange}
                     className="w-full bg-[#F5F5F7] border border-neutral-200/80 rounded-xl px-4 py-2.5 text-xs text-neutral-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
                   />
+                  <p className="text-[9px] text-neutral-400 font-light px-0.5 leading-tight">
+                    *Kamu bisa memilih banyak file sekaligus (contoh: 3 foto + 1
+                    video).
+                  </p>
+
+                  {/* 🔄 LIVE MULTIPLE PREVIEW TRACKER */}
+                  {selectedMediaPreviews.length > 0 && (
+                    <div className="mt-3 p-3 bg-neutral-50 border border-neutral-200 rounded-2xl">
+                      <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                        Pratinjau Berkas Siap Diunggah (
+                        {selectedMediaPreviews.length}):
+                      </p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {selectedMediaPreviews.map((media, index) => (
+                          <div
+                            key={index}
+                            className="aspect-square bg-white border border-neutral-200 rounded-xl overflow-hidden relative shadow-sm"
+                          >
+                            {media.isVideo ? (
+                              <video
+                                src={media.url}
+                                className="w-full h-full object-cover"
+                                muted
+                              />
+                            ) : (
+                              <img
+                                src={media.url}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                            <div className="absolute bottom-1 right-1 bg-black/60 px-1 py-0.5 rounded text-[8px] text-white">
+                              {media.isVideo ? "Vid" : "Img"}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -409,7 +512,11 @@ export default function CatalogAdminPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`w-full font-bold py-3.5 rounded-xl mt-4 transition-all active:scale-95 text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 ${editItem ? "bg-blue-600 text-white" : "bg-neutral-900 text-white"}`}
+                  className={`w-full font-bold py-3.5 rounded-xl mt-4 transition-all active:scale-95 text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50 ${
+                    editItem
+                      ? "bg-blue-600 text-white"
+                      : "bg-neutral-900 text-white"
+                  }`}
                 >
                   {isSubmitting ? (
                     <>
@@ -461,6 +568,11 @@ export default function CatalogAdminPage() {
                         const currentCatId = item.id_catalog || item.id;
                         const isItemDeleting = deletingId === currentCatId;
 
+                        // Ekstrak media utama untuk dijadikan cover tabel preview
+                        const mainMediaUrl = getMainMedia(item.image_url);
+                        const totalMediaCount = getMediaCount(item.image_url);
+                        const hasVideo = isVideoUrl(mainMediaUrl);
+
                         return (
                           <tr
                             key={currentCatId}
@@ -468,20 +580,51 @@ export default function CatalogAdminPage() {
                           >
                             <td className="px-6 py-4.5">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-[#F5F5F7] rounded-xl border border-neutral-200 flex items-center justify-center text-neutral-400 overflow-hidden shadow-inner">
-                                  {item.image_url ? (
-                                    <img
-                                      src={item.image_url}
-                                      alt=""
-                                      className="w-full h-full object-cover"
-                                    />
+                                {/* 🔄 DYNAMIC COVER PREVIEW WITH MULTI-MEDIA COUNTER BADGE */}
+                                <div className="w-10 h-10 bg-[#F5F5F7] rounded-xl border border-neutral-200 flex items-center justify-center text-neutral-400 overflow-hidden shadow-inner relative">
+                                  {mainMediaUrl ? (
+                                    hasVideo ? (
+                                      <>
+                                        <video
+                                          src={mainMediaUrl}
+                                          className="w-full h-full object-cover"
+                                          muted
+                                          playsInline
+                                        />
+                                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                          <Video
+                                            size={10}
+                                            className="text-white"
+                                          />
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <img
+                                        src={mainMediaUrl}
+                                        alt=""
+                                        className="w-full h-full object-cover"
+                                      />
+                                    )
                                   ) : (
                                     <ImageIcon size={14} />
                                   )}
+
+                                  {/* Counter item jika media > 1 */}
+                                  {totalMediaCount > 1 && (
+                                    <div className="absolute top-0 right-0 bg-blue-600 text-[7px] text-white font-black px-1 rounded-bl flex items-center gap-0.5 shadow-sm">
+                                      <Layers size={6} />
+                                      <span>{totalMediaCount}</span>
+                                    </div>
+                                  )}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-sm text-neutral-900">
+                                  <p className="font-bold text-sm text-neutral-900 flex items-center gap-1.5">
                                     {item.title}
+                                    {hasVideo && (
+                                      <span className="text-[9px] font-semibold text-neutral-400 bg-neutral-100 border border-neutral-200 px-1 rounded">
+                                        +Video
+                                      </span>
+                                    )}
                                   </p>
                                   {item.tag && (
                                     <span className="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold mt-1 inline-block border border-blue-100">
@@ -521,7 +664,10 @@ export default function CatalogAdminPage() {
                               <div className="flex items-center justify-end gap-1">
                                 <button
                                   type="button"
-                                  onClick={() => setEditItem(item)}
+                                  onClick={() => {
+                                    setEditItem(item);
+                                    setSelectedMediaPreviews([]);
+                                  }}
                                   className="text-neutral-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-xl"
                                   title="Edit Item"
                                 >

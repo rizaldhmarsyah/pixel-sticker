@@ -6,19 +6,156 @@ import { useParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
   ChevronLeft,
-  MessageSquare,
+  ChevronRight,
   ShieldCheck,
   Layers,
   Info,
   Loader2,
   Sparkles,
+  Video,
 } from "lucide-react";
+
+// 📝 SUB-KOMPONEN CAROUSEL MULTI-MEDIA DETAIL
+function DetailMediaCarousel({
+  mediaList,
+  title,
+  tag,
+}: {
+  mediaList: string[];
+  title: string;
+  tag?: string | null;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const isVideoUrl = (url: string | null) => {
+    if (!url) return false;
+    const videoExtensions = [".mp4", ".webm", ".ogg", ".mov", ".m4v"];
+    return videoExtensions.some(
+      (ext) =>
+        url.toLowerCase().endsWith(ext) || url.toLowerCase().includes("video"),
+    );
+  };
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCurrentIndex((prev) => (prev === 0 ? mediaList.length - 1 : prev - 1));
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCurrentIndex((prev) => (prev === mediaList.length - 1 ? 0 : prev + 1));
+  };
+
+  if (!mediaList || mediaList.length === 0) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center text-neutral-800">
+        <Layers size={48} className="mb-2" />
+        <span className="text-xs font-bold uppercase tracking-wider">
+          No Preview Available
+        </span>
+      </div>
+    );
+  }
+
+  const currentMedia = mediaList[currentIndex];
+  const isCurrentVideo = isVideoUrl(currentMedia);
+
+  return (
+    <div className="w-full h-full relative group/carousel overflow-hidden rounded-[2rem]">
+      {/* Container Render Media Slide */}
+      {isCurrentVideo ? (
+        <video
+          key={currentMedia}
+          src={currentMedia}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover transition-all duration-500"
+        />
+      ) : (
+        <img
+          src={currentMedia}
+          alt={`${title} - slide ${currentIndex + 1}`}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover/carousel:scale-102"
+        />
+      )}
+
+      {/* Tombol Panah Navigasi (Aktif jika media > 1) */}
+      {mediaList.length > 1 && (
+        <>
+          <button
+            onClick={handlePrev}
+            className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/90 backdrop-blur-md text-white p-2 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-all duration-200 z-20 active:scale-90"
+            title="Media Sebelumnya"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <button
+            onClick={handleNext}
+            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/90 backdrop-blur-md text-white p-2 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-all duration-200 z-20 active:scale-90"
+            title="Media Berikutnya"
+          >
+            <ChevronRight size={18} />
+          </button>
+
+          {/* Indikator Titik Carousel (Pagination Dots) */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/50 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10">
+            {mediaList.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentIndex(idx)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  currentIndex === idx
+                    ? "w-5 bg-blue-500"
+                    : "w-1.5 bg-white/40 hover:bg-white/80"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Badge Penanda Video */}
+      {isCurrentVideo && (
+        <span className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white/90 px-2.5 py-1 rounded-lg border border-white/10 text-[10px] font-bold flex items-center gap-1 z-10">
+          <Video size={12} /> Video
+        </span>
+      )}
+
+      {/* Tag Status */}
+      {tag && (
+        <span className="absolute top-5 left-5 text-[9px] uppercase tracking-widest font-black bg-blue-600 text-white px-3.5 py-2 rounded-xl shadow-lg border border-blue-400/20 z-10">
+          {tag}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function CatalogDetailPage() {
   const params = useParams() as any;
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+
+  // 📝 Helper menguraikan image_url (string tunggal atau JSON array) menjadi Array of URLs
+  const parseMediaList = (mediaData: any): string[] => {
+    if (!mediaData) return [];
+    if (Array.isArray(mediaData)) return mediaData;
+    if (typeof mediaData === "string") {
+      if (mediaData.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(mediaData);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          return [mediaData];
+        }
+      }
+      return [mediaData];
+    }
+    return [];
+  };
 
   useEffect(() => {
     const fetchDetailItem = async () => {
@@ -36,7 +173,6 @@ export default function CatalogDetailPage() {
 
       let fetchedData = null;
 
-      // STRATEGI 1: Tembak id_catalog bertipe data integer
       if (isNumberId) {
         const { data: dataByIdCatalog } = await supabase
           .from("catalog")
@@ -47,7 +183,6 @@ export default function CatalogDetailPage() {
         fetchedData = dataByIdCatalog;
       }
 
-      // STRATEGI 2: Fallback pencarian UUID legacy
       if (!fetchedData) {
         const { data: dataByIdLegacy } = await supabase
           .from("catalog")
@@ -58,7 +193,6 @@ export default function CatalogDetailPage() {
         fetchedData = dataByIdLegacy;
       }
 
-      // STRATEGI 3: Fallback pencarian teks biasa id_catalog
       if (!fetchedData) {
         const { data: dataByIdCatalogText } = await supabase
           .from("catalog")
@@ -101,6 +235,8 @@ export default function CatalogDetailPage() {
     );
   }
 
+  const mediaList = parseMediaList(item.image_url);
+
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans antialiased pt-28 pb-24 px-4 relative overflow-x-hidden select-none">
       {/* Background Ambient Glow Lingkaran ala Apple Premium */}
@@ -117,7 +253,7 @@ export default function CatalogDetailPage() {
           </Link>
         </div>
 
-        {/* ================= APPLE BOX BOX DESIGN (FULLY CENTERED) ================= */}
+        {/* ================= APPLE BOX DESIGN (FULLY CENTERED) ================= */}
         <div className="w-full bg-neutral-900/30 border border-white/10 p-6 md:p-12 rounded-[2.5rem] backdrop-blur-2xl shadow-2xl flex flex-col items-center space-y-8">
           {/* Badge Status */}
           <div className="flex items-center gap-3 justify-center">
@@ -136,28 +272,13 @@ export default function CatalogDetailPage() {
 
           <div className="w-16 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full" />
 
-          {/* Foto Tengah */}
-          <div className="w-full max-w-xl aspect-[4/3] bg-neutral-950 rounded-[2rem] border border-white/10 overflow-hidden relative shadow-2xl group">
-            {item.image_url ? (
-              <img
-                src={item.image_url}
-                alt={item.title}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-neutral-800">
-                <Layers size={48} className="mb-2" />
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  No Preview Available
-                </span>
-              </div>
-            )}
-
-            {item.tag && (
-              <span className="absolute top-5 left-5 text-[9px] uppercase tracking-widest font-black bg-blue-600 text-white px-3.5 py-2 rounded-xl shadow-lg border border-blue-400/20">
-                {item.tag}
-              </span>
-            )}
+          {/* MULTI-MEDIA CAROUSEL CONTAINER */}
+          <div className="w-full max-w-xl aspect-[4/3] bg-neutral-950 rounded-[2rem] border border-white/10 overflow-hidden relative shadow-2xl">
+            <DetailMediaCarousel
+              mediaList={mediaList}
+              title={item.title}
+              tag={item.tag}
+            />
           </div>
 
           {/* Deskripsi Tengah */}
@@ -189,12 +310,19 @@ export default function CatalogDetailPage() {
             </div>
 
             <a
-              href={`https://wa.me/628xxxxxxxxxx?text=Halo%20Pixel%20Sticker,%20saya%20tertarik%20ingin%20tanya%20harga%20dan%20pasang%20warna%20*${encodeURIComponent(item.title || "")}*`}
+              href={`https://wa.me/628xxxxxxxxxx?text=Halo%20Pixel%20Sticker,%20saya%20tertarik%20ingin%20tanya%20harga%20dan%20pasang%20warna%20*${encodeURIComponent(
+                item.title || "",
+              )}*`}
               target="_blank"
               rel="noreferrer"
-              className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-200 text-black px-8 py-4 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 active:scale-98 shadow-xl hover:shadow-white/5"
+              className="w-full md:w-auto inline-flex items-center justify-center gap-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black px-8 py-4 rounded-xl text-xs uppercase tracking-wider transition-all duration-300 active:scale-95 shadow-lg shadow-emerald-950/40 border border-emerald-400/30 group"
             >
-              <MessageSquare size={14} />
+              <svg
+                className="w-4 h-4 fill-current group-hover:scale-110 transition-transform duration-300"
+                viewBox="0 0 24 24"
+              >
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+              </svg>
               <span>Konsultasi & Tanya Harga</span>
             </a>
           </div>

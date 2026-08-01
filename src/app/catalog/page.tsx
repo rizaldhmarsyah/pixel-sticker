@@ -3,7 +3,130 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { Search, Eye, Zap, Sparkles } from "lucide-react";
+import {
+  Search,
+  Eye,
+  Zap,
+  Sparkles,
+  Video,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+
+// 📝 HELPER MULTI-MEDIA CAROUSEL COMPONENT
+function CatalogCardMedia({
+  mediaList,
+  title,
+}: {
+  mediaList: string[];
+  title: string;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const isVideoUrl = (url: string | null) => {
+    if (!url) return false;
+    const videoExtensions = [".mp4", ".webm", ".ogg", ".mov", ".m4v"];
+    return videoExtensions.some(
+      (ext) =>
+        url.toLowerCase().endsWith(ext) || url.toLowerCase().includes("video"),
+    );
+  };
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev === 0 ? mediaList.length - 1 : prev - 1));
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentIndex((prev) => (prev === mediaList.length - 1 ? 0 : prev + 1));
+  };
+
+  if (!mediaList || mediaList.length === 0) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center text-neutral-800 bg-neutral-900/50">
+        <Zap size={28} className="mb-1.5 stroke-[1.25]" />
+        <span className="text-[9px] uppercase font-bold tracking-widest">
+          No Preview
+        </span>
+      </div>
+    );
+  }
+
+  const currentMedia = mediaList[currentIndex];
+  const isCurrentVideo = isVideoUrl(currentMedia);
+
+  return (
+    <div className="w-full h-full relative group/carousel">
+      {/* Container Render Media Slide */}
+      {isCurrentVideo ? (
+        <video
+          key={currentMedia}
+          src={currentMedia}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover transition-all duration-500"
+        />
+      ) : (
+        <img
+          src={currentMedia}
+          alt={`${title} - slide ${currentIndex + 1}`}
+          className="w-full h-full object-cover transition-all duration-500"
+        />
+      )}
+
+      {/* Tombol Panah Geser (Hanya muncul jika media > 1) */}
+      {mediaList.length > 1 && (
+        <>
+          <button
+            onClick={handlePrev}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white p-1.5 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-opacity z-20"
+            title="Sebelumnya"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={handleNext}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white p-1.5 rounded-full opacity-0 group-hover/carousel:opacity-100 transition-opacity z-20"
+            title="Berikutnya"
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          {/* Indikator Titik Carousel (Pagination Dots) */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/40 px-2 py-1 rounded-full backdrop-blur-md border border-white/10">
+            {mediaList.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentIndex(idx);
+                }}
+                className={`h-1.5 rounded-full transition-all ${
+                  currentIndex === idx
+                    ? "w-4 bg-blue-500"
+                    : "w-1.5 bg-white/40 hover:bg-white/80"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Badge Penanda Video */}
+      {isCurrentVideo && (
+        <span className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-white/90 px-2 py-1 rounded-lg border border-white/10 text-[10px] font-bold flex items-center gap-1 z-10">
+          <Video size={11} /> Video
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default function PublicCatalogPage() {
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
@@ -15,9 +138,25 @@ export default function PublicCatalogPage() {
   const supabase = createClient();
   const categories = ["Semua", "Doff", "Glossy", "Carbon", "Matt", "Satin"];
 
+  const parseMediaList = (mediaData: any): string[] => {
+    if (!mediaData) return [];
+    if (Array.isArray(mediaData)) return mediaData;
+    if (typeof mediaData === "string") {
+      if (mediaData.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(mediaData);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {
+          return [mediaData];
+        }
+      }
+      return [mediaData];
+    }
+    return [];
+  };
+
   const fetchCatalog = async () => {
     setLoading(true);
-    // UPDATE DATABASE: materials join mengikuti relasi foreign key id_materials baru
     const { data, error } = await supabase.from("catalog").select(`
         *,
         materials (
@@ -89,7 +228,7 @@ export default function PublicCatalogPage() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap active:scale-95 ${
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 whitespace-nowrap active:scale-[0.95] ${
                   selectedCategory === cat
                     ? "bg-white text-black shadow-xl"
                     : "bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/10 border border-white/5"
@@ -134,39 +273,30 @@ export default function PublicCatalogPage() {
               const hasStock = item.materials
                 ? item.materials.stock_meters > 0
                 : true;
+              const mediaList = parseMediaList(item.image_url);
 
               return (
                 <div
                   key={currentRouteParam}
                   className="bg-neutral-900/20 border border-white/5 rounded-[2.5rem] overflow-hidden group hover:border-white/15 transition-all duration-500 flex flex-col hover:shadow-2xl shadow-black relative"
                 >
-                  {/* Foto Varian */}
+                  {/* Media Banner Section (Carousel Foto & Video Slider) */}
                   <div className="aspect-[4/3] bg-neutral-950 relative overflow-hidden border-b border-white/5 shadow-inner">
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.title}
-                        className="w-full h-full object-cover scale-100 group-hover:scale-102 transition-transform duration-700"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-neutral-800 bg-neutral-900/50">
-                        <Zap size={28} className="mb-1.5 stroke-[1.25]" />
-                        <span className="text-[9px] uppercase font-bold tracking-widest">
-                          No Preview
-                        </span>
-                      </div>
-                    )}
+                    <CatalogCardMedia
+                      mediaList={mediaList}
+                      title={item.title}
+                    />
 
                     {/* Badge Varian Tag */}
                     {item.tag && (
-                      <span className="absolute top-5 left-5 text-[9px] uppercase tracking-widest font-black bg-blue-600 text-white px-3 py-1.5 rounded-xl shadow-md border border-blue-400/20">
+                      <span className="absolute top-5 left-5 text-[9px] uppercase tracking-widest font-black bg-blue-600 text-white px-3 py-1.5 rounded-xl shadow-md border border-blue-400/20 z-10 pointer-events-none">
                         {item.tag}
                       </span>
                     )}
 
                     {/* Badge Status Stok Minimalis */}
                     <span
-                      className={`absolute top-5 right-5 text-[9px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-xl border backdrop-blur-md shadow-sm ${
+                      className={`absolute top-5 right-5 text-[9px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-xl border backdrop-blur-md shadow-sm z-10 pointer-events-none ${
                         hasStock
                           ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                           : "bg-rose-500/10 text-rose-400 border-rose-500/20"
@@ -187,7 +317,6 @@ export default function PublicCatalogPage() {
                       </h3>
                     </div>
 
-                    {/* REVISI DESAIN: Lebar Penuh Rata Tengah Simetris */}
                     <div className="w-full pt-2">
                       <Link
                         href={`/catalog/${currentRouteParam}`}
