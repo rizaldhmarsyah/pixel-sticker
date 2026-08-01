@@ -2,14 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import {
-  Menu,
-  X,
-  User,
-  LogOut,
-  CalendarCheck,
-  ShieldAlert,
-} from "lucide-react";
+import { Menu, X, User, LogOut, CalendarCheck } from "lucide-react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -46,7 +39,6 @@ export default function Navbar() {
 
     getSession();
 
-    // Dengarkan perubahan auth (login/logout) dari tab atau tindakan lain
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -98,7 +90,7 @@ export default function Navbar() {
     try {
       await supabase.auth.signOut();
       setDropdownOpen(false);
-      router.push("/"); // Setelah logout, balikkan customer ke halaman utama
+      router.push("/");
       router.refresh();
     } catch (err) {
       console.error("Gagal melakukan sign out:", err);
@@ -122,8 +114,8 @@ export default function Navbar() {
         <div
           className={`w-full transition-all duration-500 ease-out flex items-center justify-between ${
             isScrolled
-              ? "max-w-[850px] md:max-w-[900px] bg-neutral-900/80 backdrop-blur-lg border border-white/10 rounded-full px-6 md:px-8 h-14 md:h-16 shadow-2xl"
-              : "max-w-[1200px] bg-transparent border-b border-transparent px-6 sm:px-8 lg:px-12 h-16 md:h-20 rounded-none"
+              ? "max-w-[850px] md:max-w-[900px] bg-neutral-900/80 backdrop-blur-lg border border-white/10 rounded-full px-6 md:px-8 h-16 md:h-16 shadow-2xl"
+              : "max-w-[1200px] bg-transparent border-b border-transparent px-6 sm:px-8 lg:px-12 h-20 md:h-24 rounded-none"
           }`}
         >
           {/* Tombol Mobile Menu */}
@@ -141,26 +133,24 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Logo Platform */}
+          {/* 🎯 Logo Platform Murni - JAUH LEBIH BESAR */}
           <div className="flex-shrink-0 flex items-center justify-center md:justify-start w-full md:w-auto absolute md:static left-0 right-0 pointer-events-none md:pointer-events-auto">
             <Link
               href="/"
-              className={`font-bold tracking-tight pointer-events-auto transition-all duration-300 text-white flex items-center gap-3.5 ${
-                isScrolled ? "text-base md:text-lg" : "text-base md:text-xl"
-              }`}
+              className="pointer-events-auto transition-all duration-300 flex items-center h-full"
             >
-              <div className="relative transition-all duration-300">
+              <div className="relative transition-all duration-300 flex items-center justify-center">
                 <Image
-                  src="/pixel-sticker-logo.png"
+                  src="/logopixelsticker.png"
                   alt="Logo Pixel Sticker"
-                  width={isScrolled ? 40 : 52}
-                  height={isScrolled ? 40 : 52}
-                  className="object-contain transition-all duration-300"
+                  // Ukuran diperbesar drastis
+                  width={isScrolled ? 56 : 80}
+                  height={isScrolled ? 56 : 80}
+                  className="object-contain transition-all duration-300 drop-shadow-lg"
                   style={{ height: "auto" }}
                   priority
                 />
               </div>
-              <span>Pixel Sticker</span>
             </Link>
           </div>
 
@@ -185,7 +175,6 @@ export default function Navbar() {
             ref={dropdownRef}
           >
             {user ? (
-              // JALUR USER SUDAH LOGIN: Tampilkan Avatar Bulat dari Google
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -205,7 +194,7 @@ export default function Navbar() {
                   )}
                 </button>
 
-                {/* --- POPOVER DROPDOWN MENU KREATIF --- */}
+                {/* Popover Dropdown Menu */}
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-3 w-56 bg-neutral-950 border border-white/10 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 duration-200 z-50 text-left">
                     <div className="px-3 py-2 border-b border-white/5 mb-1">
@@ -238,7 +227,6 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              // JALUR USER BELUM LOGIN: Tampilkan Ikon User Kosong Biasa ke /login
               <Link
                 href="/login"
                 className="text-white/80 hover:text-white transition-colors p-1 md:p-2"

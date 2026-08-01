@@ -310,7 +310,7 @@ export default async function AdminDashboard() {
       {/* FOOTER PENGENCANG INFORMASI */}
       <footer className="p-6 bg-white border border-neutral-200 rounded-[1.5rem] text-center shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="text-neutral-400 text-[9px] tracking-[0.3em] uppercase font-semibold">
-          Sistem Informasi Manajemen Otomotif &copy; 2026
+          Sistem Informasi Manajemen Pixel Sticker &copy; 2026
         </p>
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-400 uppercase font-mono">
           <Clock size={12} />
