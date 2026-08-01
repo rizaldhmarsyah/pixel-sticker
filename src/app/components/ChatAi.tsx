@@ -10,26 +10,57 @@ export default function ChatAI() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const initialGreeting = {
+    role: "model" as const,
+    content:
+      "Halo! Saya Asisten Otomatis Pixel Sticker. Ada yang bisa saya bantu mengenai cek estimasi harga wrapping mobil Anda hari ini?",
+  };
+
   const [messages, setMessages] = useState<
     Array<{ role: "user" | "model"; content: string }>
-  >([
-    {
-      role: "model",
-      content:
-        "Halo! Saya Asisten Otomatis Pixel Sticker. Ada yang bisa saya bantu mengenai cek stok bahan, estimasi ukuran meter, atau harga wrapping mobil Anda hari ini?",
-    },
-  ]);
+  >([initialGreeting]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMessages([initialGreeting]);
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Keamanan Jelas: Jangan render chatbox jika sedang membuka halaman dashboard admin
   if (pathname.startsWith("/admin")) {
     return null;
   }
+
+  // 🔗 RENDER NOMOR WA DENGAN INSTRUKSI KLIK CLEAR & CANTIK
+  const renderMessageWithLinks = (text: string) => {
+    const waRegex = /(087789046743|0877-8904-6743|\+6287789046743)/g;
+    const parts = text.split(waRegex);
+
+    return parts.map((part, index) => {
+      if (part.match(waRegex)) {
+        return (
+          <span key={index} className="inline-block my-1">
+            <a
+              href="https://wa.me/6287789046743?text=Halo%20Pixel%20Sticker,%20saya%20mau%20konsultasi%20pengerjaan%20kustom"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold px-2.5 py-1 rounded-lg text-[11px] transition-all shadow-sm active:scale-95 no-underline my-0.5"
+            >
+              <span>{part}</span>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-md font-medium">
+                👉 Klik untuk Chat WA
+              </span>
+            </a>
+          </span>
+        );
+      }
+      return part;
+    });
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +77,6 @@ export default function ChatAI() {
     setMessages(updatedMessages);
 
     try {
-      // Menembak Route API Backend Groq baru kita
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -100,7 +130,7 @@ export default function ChatAI() {
         </button>
       )}
 
-      {/* --- JENDELA UTAMA BOX CHATBOX (APPLE SOLID LIGHT) --- */}
+      {/* --- JENDELA CHATBOX --- */}
       {isOpen && (
         <div className="w-85 md:w-96 h-[500px] bg-white border border-neutral-200 shadow-2xl rounded-[2rem] flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-200">
           {/* Header */}
@@ -126,12 +156,16 @@ export default function ChatAI() {
             </button>
           </div>
 
-          {/* Chat Messages */}
+          {/* Messages */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[#F5F5F7] scrollbar-thin scrollbar-thumb-neutral-200">
             {messages.map((msg, index) => (
               <div
                 key={index}
-                className={`flex flex-col max-w-[85%] ${msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"}`}
+                className={`flex flex-col max-w-[85%] ${
+                  msg.role === "user"
+                    ? "ml-auto items-end"
+                    : "mr-auto items-start"
+                }`}
               >
                 <div
                   className={`p-3.5 rounded-2xl text-xs leading-relaxed shadow-sm text-left whitespace-pre-line ${
@@ -140,7 +174,7 @@ export default function ChatAI() {
                       : "bg-white text-neutral-900 border border-neutral-200/60 rounded-bl-none"
                   }`}
                 >
-                  {msg.content}
+                  {renderMessageWithLinks(msg.content)}
                 </div>
               </div>
             ))}
@@ -154,7 +188,7 @@ export default function ChatAI() {
             <div ref={chatEndRef} />
           </div>
 
-          {/* Form Input */}
+          {/* Form */}
           <form
             onSubmit={handleSendMessage}
             className="p-3 bg-white border-t border-neutral-100 flex gap-2"

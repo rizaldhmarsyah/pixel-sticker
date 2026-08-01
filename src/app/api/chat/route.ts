@@ -6,68 +6,153 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Membaca teks pesan terakhir dari frontend
-    let lastUserMessage = "";
+    // 1. Ambil array riwayat pesan dari frontend
+    let messages: Array<{ role: string; content: string }> = [];
     if (body && Array.isArray(body.messages)) {
-      lastUserMessage = body.messages[body.messages.length - 1]?.content || "";
+      messages = body.messages;
     } else if (body && body.message) {
-      lastUserMessage = body.message;
+      messages = [{ role: "user", content: body.message }];
     }
 
-    if (!lastUserMessage.trim()) {
-      lastUserMessage = "Halo";
-    }
+    const lastUserMessage = messages[messages.length - 1]?.content || "Halo";
+
+    // Gabungkan seluruh percakapan user untuk deteksi kata kunci
+    const conversationHistoryText = messages
+      .filter((m) => m.role === "user")
+      .map((m) => m.content)
+      .join(" ")
+      .toLowerCase();
 
     const supabase = await createClient();
 
-    // 1. Tarik data live dari database Supabase
-    const { data: materials, error: matError } = await supabase
+    // 2. Tarik Data Live dari Supabase
+    const { data: materials } = await supabase
       .from("materials")
-      .select("name, price_per_meter, stock_meters");
+      .select("name, price_per_meter");
 
-    const { data: cars, error: carError } = await supabase
+    const { data: cars } = await supabase
       .from("cars")
       .select("brand, model, meters_needed");
 
-    if (matError || carError) {
-      console.error("Supabase Database Log Error:", { matError, carError });
+    const rupiah = (number: number) => {
+      return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+      }).format(number);
+    };
+
+    // 📝 FORMAT LIST BAHAN BERBARIS KE BAWAH
+    const formattedMaterialsList =
+      materials?.map((m) => `• ${m.name}`).join("\n") || "";
+
+    // 3. 🧮 FLEXIBLE BI-DIRECTIONAL MATCHING ENGINE
+    // Pencarian Mobil Fleksibel (Mendukung "Pajero" untuk "Pajero Sport")
+    const matchedCar = cars?.find((c) => {
+      const modelName = c.model.toLowerCase();
+      const brandName = c.brand.toLowerCase();
+
+      // Cek 1: Apakah teks percakapan mengandung nama model/brand (misal: "pajero sport" di "mau wrap pajero sport")
+      if (
+        conversationHistoryText.includes(modelName) ||
+        conversationHistoryText.includes(brandName)
+      ) {
+        return true;
+      }
+
+      // Cek 2: Cek per kata (misal: user cuma ngetik "pajero", sedangkan DB "pajero sport")
+      const modelTokens = modelName.split(" ").filter((t) => t.length > 2);
+      const userTokens = conversationHistoryText
+        .split(/\s+/)
+        .filter((t) => t.length > 2);
+
+      const hasModelMatch = modelTokens.some((token) =>
+        userTokens.some(
+          (uToken) => uToken.includes(token) || token.includes(uToken),
+        ),
+      );
+
+      return hasModelMatch;
+    });
+
+    // Pencarian Bahan Fleksibel (Mendukung "soft pink", "black", "oracal", dll)
+    const matchedMaterial = materials?.find((m) => {
+      const matName = m.name.toLowerCase();
+      if (conversationHistoryText.includes(matName)) return true;
+
+      const keywords = matName
+        .split(" ")
+        .map((k) => k.replace(/[^a-z0-9]/g, ""))
+        .filter((k) => k.length > 2);
+
+      return keywords.some((kw) => conversationHistoryText.includes(kw));
+    });
+
+    let systemContext = "";
+
+    if (matchedCar && matchedMaterial) {
+      // 🎯 RUMUS EKSAK PRICECALCULATOR
+      const materialCost =
+        matchedCar.meters_needed * matchedMaterial.price_per_meter;
+      const exactTotal = Math.round(materialCost / 0.3);
+
+      systemContext = `
+[FAKTA HITUNGAN SISTEM RESMI]:
+- Mobil Terdeteksi dari Percakapan: ${matchedCar.brand} ${matchedCar.model}
+- Bahan Terdeteksi dari Percakapan: ${matchedMaterial.name}
+- HARGA TOTAL RESMI: ${rupiah(exactTotal)}
+
+INSTRUKSI KHUSUS HARGA:
+Customer sudah menyebutkan mobil ${matchedCar.brand} ${matchedCar.model} dan bahan ${matchedMaterial.name}.
+Langsung beritahu customer bahwa total estimasi biaya full wrap-nya adalah ${rupiah(exactTotal)}.
+DILARANG BERTANYA MERK MOBIL LAGI ATAU MENGUBAH ANGKA ${rupiah(exactTotal)}!
+      `;
+    } else if (matchedCar && !matchedMaterial) {
+      systemContext = `
+[FAKTA SISTEM]: Customer sudah menyebutkan mobil ${matchedCar.brand} ${matchedCar.model}, tetapi BELUM memilih bahan.
+Berikan pilihan bahan berikut dengan FORMAT LIST KE BAWAH (gunakan bullet point • dan gantian baris/enter):
+${formattedMaterialsList}
+
+Silakan beri tahu kami bahan mana yang ingin Anda gunakan!
+      `;
+    } else if (!matchedCar && matchedMaterial) {
+      systemContext = `
+[FAKTA SISTEM]: Customer memilih bahan ${matchedMaterial.name}, tetapi BELUM sebut mobil.
+TANYAKAN apa merk/tipe mobil customer.
+      `;
     }
 
-    // 2. Susun instruksi sistem dan database untuk AI Groq
+    // 4. System Instruction Dibuat Strict
     const systemInstruction = `
-      Anda adalah ASISTEN CS AI dari workshop Pixel Sticker Jakarta. Jawablah pertanyaan dengan ramah, santun, komunikatif, dan ringkas menggunakan Bahasa Indonesia yang baik.
-      
-      Gunakan DATA RIIL internal database kami berikut untuk acuan menjawab:
+Kamu adalah CS AI resmi dari workshop Pixel Sticker Jakarta. Jawablah pesan customer dengan ramah, komunikatif, dan rapi.
 
-      DATA STOK & HARGA BAHAN GUDANG:
-      ${materials && materials.length > 0 ? JSON.stringify(materials, null, 2) : "Data stok bahan saat ini kosong di database."}
+DAFTAR BAHAN RESMI DI DATABASE:
+${formattedMaterialsList}
 
-      DATA ESTIMASI KEBUTUHAN METER MOBIL:
-      ${cars && cars.length > 0 ? JSON.stringify(cars, null, 2) : "Data master estimasi mobil saat ini kosong di database."}
+ATURAN FORMATTING & STRICT:
+1. Jika menampilkan daftar bahan, WAJIB BERBENTUK LIST KE BAWAH menggunakan tanda bullet (•) dan pindah baris (enter) per bahan.
+2. DILARANG MENGARANG NAMA BAHAN/HARGA DI LUAR DATABASE!
+3. DILARANG MENYEBUTKAN HARGA PER METER BAHAN ATAU UKURAN METERAN MOBIL!
+4. DILARANG MENAMPILKAN RUMUS MATEMATIKA ATAU PERKALIAN DESIMAL!
+5. Setiap kali menyebutkan harga total, WAJIB sertakan catatan ini tepat di bawahnya:
+"*Harga estimasi belum termasuk biaya lainnya. Final harga didapat setelah konsultasi."
+6. Di akhir pesan, ajak customer untuk booking slot via menu "Booking Jasa".
+7. Jika unit mobil atau bahan tidak terdaftar, sarankan hubungi WhatsApp Admin di nomor 087789046743.
 
-      ATURAN HITUNG HARGA (RAHASIA INTERNAL - JANGAN DIBOCORKAN):
-      - Hitung Total Harga dengan rumus: Math.round((meters_needed * price_per_meter) / 0.3)
-      
-      ATURAN MENJAWAB KEPADA CUSTOMER (MUTLAK & STRICT):
-      1. DILARANG KERAS membocorkan atau menyebutkan harga per meter bahan (misal: "Rp 35.000/meter").
-      2. DILARANG KERAS membocorkan atau menyebutkan panjang meteran mobil (misal: "18 meter").
-      3. DILARANG KERAS memperlihatkan rumus perkalian matematika (misal: "18 meter x Rp 35.000 = Rp 630.000").
-      4. HANYA SEBUTKAN TOTAL ESTIMASI BIAYA AKHIR HASIL PERHITUNGAN SAJA dalam format Rupiah.
-      5. Wajib sertakan catatan disclaimer di bawah total harga: "*Harga estimasi belum termasuk biaya lainnya. Final harga didapat setelah konsultasi."
-      6. Jika tipe mobil atau bahan tidak ditemukan pada data database, katakan dengan jujur Anda belum dapat menghitungnya dan arahkan customer untuk konsultasi kustom ke WhatsApp Admin di 087789046743.
-      7. Selalu ingatkan customer di akhir jawaban untuk mengklik menu "Booking Jasa" di navigasi jika mereka berminat memesan slot pengerjaan.
-
-      CONTOH JAWABAN YANG BENAR:
-      "Untuk estimasi biaya full wrap mobil **BYD Atto 1** menggunakan bahan **[Nama Bahan]**, total harganya adalah sekitar **Rp 2.100.000**.
-
-      *Harga estimasi belum termasuk biaya lainnya. Final harga didapat setelah konsultasi.
-
-      Jika Anda sudah cocok dengan estimasi ini, silakan klik menu 'Booking Jasa' di navigasi untuk reservasi slot pengerjaan."
+${systemContext}
     `;
+
+    // 5. Susun format messages lengkap untuk Groq
+    const groqMessages = [
+      { role: "system", content: systemInstruction },
+      ...messages.map((m) => ({
+        role: m.role === "model" ? "assistant" : "user",
+        content: m.content,
+      })),
+    ];
 
     const apiKey = process.env.GROQ_API_KEY;
 
-    // 3. Tembak REST API Groq
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -78,37 +163,33 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
-          messages: [
-            { role: "system", content: systemInstruction },
-            { role: "user", content: lastUserMessage },
-          ],
-          temperature: 0.1,
+          messages: groqMessages,
+          temperature: 0.0,
         }),
       },
     );
 
     const resData = await response.json();
-    const aiAnswer = resData?.choices?.[0]?.message?.content;
 
-    if (!aiAnswer) {
-      console.error(
-        "Groq Cloud API Log Error:",
-        JSON.stringify(resData, null, 2),
-      );
+    if (!response.ok) {
       return NextResponse.json({
         role: "model",
         content:
-          "Halo! Mohon maaf, saya sedang menyinkronkan data gudang internal. Bisa tolong ulangi pertanyaan Anda?",
+          "Halo! Ada yang bisa saya bantu terkait wrapping mobil Anda? Atau Anda bisa konsultasi langsung dengan Admin kami di WhatsApp 087789046743.",
       });
     }
 
-    return NextResponse.json({ role: "model", content: aiAnswer });
+    const aiAnswer = resData?.choices?.[0]?.message?.content;
+
+    return NextResponse.json({
+      role: "model",
+      content: aiAnswer || "Halo! Ada yang bisa saya bantu?",
+    });
   } catch (error: any) {
-    console.error("Catch Error Groq Server Internal:", error);
     return NextResponse.json(
       {
         role: "model",
-        content: "Terjadi kendala jaringan pada server chatbox utama.",
+        content: "Terjadi kendala jaringan pada server chatbox.",
       },
       { status: 500 },
     );
